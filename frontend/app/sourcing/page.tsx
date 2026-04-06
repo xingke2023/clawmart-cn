@@ -177,9 +177,14 @@ export default function SourcingPage() {
           <p className="claw-body" style={{ margin: '0 0 32px' }}>
             不是聊天机器人。不是模板。一个为你的业务定制搭建的数字工作者，了解你的业务，使用你的工具，真正完成工作。
           </p>
-          <button className="claw-btn-primary" style={{ fontSize: 16, padding: '12px 32px' }} onClick={() => document.getElementById('consult-form')?.scrollIntoView({ behavior: 'smooth' })}>
-            免费咨询
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <a href="https://work.weixin.qq.com/kfid/kfcdfdb02ed73c8e4d0" target="_blank" rel="noopener noreferrer" className="claw-btn-primary" style={{ fontSize: 16, padding: '12px 32px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+              免费咨询
+            </a>
+            <a href="/install-service" className="claw-btn-ghost" style={{ fontSize: 15, padding: '12px 28px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+              299元安装龙虾
+            </a>
+          </div>
           <p style={{ fontSize: 13, color: '#9e8074', marginTop: 12 }}>$2,000 搭建费 · $500/月 · 无合同</p>
         </section>
 
@@ -458,7 +463,7 @@ export default function SourcingPage() {
                   <label htmlFor="notes" className="claw-form-label">还有什么我们需要知道的？（选填）</label>
                   <textarea id="notes" rows={3} value={formData.notes} onChange={handleChange} className="claw-textarea" />
                 </div>
-                <button type="submit" className="claw-btn-primary" style={{ width: '100%', height: 44, fontWeight: 700, fontSize: 15 }}>获取免费咨询</button>
+                <a href="https://work.weixin.qq.com/kfid/kfcdfdb02ed73c8e4d0" target="_blank" rel="noopener noreferrer" className="claw-btn-primary" style={{ width: '100%', height: 44, fontWeight: 700, fontSize: 15, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>获取免费咨询</a>
                 <p style={{ textAlign: 'center', fontSize: 12, color: '#9e8074' }}>无需付款。我们会在 24 小时内通过邮件联系你。</p>
               </form>
             )}

@@ -21,6 +21,7 @@ class Listing extends Model
         'status',
         'category',
         'demo_messages',
+        'demo_personas',
     ];
 
     public function user()
@@ -33,6 +34,7 @@ class Listing extends Model
         return [
             'price' => 'decimal:2',
             'demo_messages' => 'array',
+            'demo_personas' => 'array',
         ];
     }
 }

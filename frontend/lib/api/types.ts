@@ -60,6 +60,11 @@ export interface DemoMessage {
   text: string;
 }
 
+export interface DemoPersona {
+  label: string;
+  messages: DemoMessage[];
+}
+
 export interface Listing {
   id: number;
   user_id: number | null;
@@ -71,6 +76,7 @@ export interface Listing {
   status: string;
   category: string;
   demo_messages: DemoMessage[] | null;
+  demo_personas: DemoPersona[] | null;
   created_at: string;
   updated_at: string;
   user?: {

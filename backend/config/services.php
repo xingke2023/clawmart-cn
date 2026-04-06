@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    'anthropic' => [
+        'api_key'  => env('ANTHROPIC_API_KEY'),
+        'model'    => env('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
+        'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
+    ],
+
+    'deepseek' => [
+        'api_key'  => env('DEEPSEEK_API_KEY2'),
+        'model'    => env('DEEPSEEK_MODEL', 'deepseek-chat'),
+        'base_url' => env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'),
+    ],
+
 ];

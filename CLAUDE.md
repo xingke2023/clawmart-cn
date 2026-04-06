@@ -339,6 +339,58 @@ When creating new listings via seed or seller dashboard, default price is 0.
 - `PUT /api/profile` — update profile fields
 - `POST /api/become-seller` — set is_seller=true
 
+## 行业方案 Listing 模版
+
+`行业方案` 是平台的高价值品类（category: `行业方案`），每个 listing 代表针对某一行业的**完整 AI 解决方案套件**，而非单个技能包。
+
+### 已有方案
+- **生鲜门店 AI 店长助手**（slug: `fresh-market-ai-manager`，¥299）— 生鲜连锁门店全链路经营系统
+
+### 新增行业方案 Listing 的规范
+
+**定价**：¥199–¥999（视方案复杂度），不设免费
+
+**description 结构**（参考生鲜方案格式）：
+```
+第一段：一句话定位（为XX行业打造的XX系统，核心价值主张）
+
+第二段：核心理念或设计原则（可选，2–3句）
+
+第三段：功能模块列表，格式：
+① 模块名（核心功能描述）
+② 模块名（核心功能描述）
+...
+
+最后一行：适用场景（适用于XX类型的客户/企业）
+```
+
+**demo_messages 规范**：
+- 4–6 条对话，展示核心业务场景
+- 第一条必须是 `user` 发起，模拟真实员工/用户的碎片化输入（口语化、不完整）
+- AI 回复要体现：① 确认收到 ② 数据分析 ③ 行动建议 三段结构
+- 使用 emoji 分隔三段（✅ 📊 💡）
+
+**示例（生鲜方案 demo_messages）**：
+```php
+'demo_messages' => [
+    ['type' => 'user', 'text' => '胡萝卜今天下午3点就卖完了'],
+    ['type' => 'ai',   'text' => "✅ 已记录：胡萝卜 今日15:00 售罄\n\n📊 AI 分析：\n胡萝卜本周已连续3天提前售罄，今日较昨日提前2小时。\n\n💡 建议：\n明日进货量建议从 50斤 → 70斤（+40%）\n是否立即发送进货调整建议给采购？"],
+    ['type' => 'user', 'text' => '好的，发给采购'],
+    ['type' => 'ai',   'text' => "✅ 已通知采购小王\n📋 明日胡萝卜调整进货单已发送\n\n另：西红柿昨日剩余15斤，今日已是第2天，建议触发8折清货促销，是否确认执行？"],
+],
+```
+
+### 行业方案前端 Tab 过滤规则
+- `industry === 'industry'` 时，直接用 `params.category = '行业方案'` 传给后端，**不做客户端关键词过滤**
+- 与 `AI 角色` tab 的处理方式相同（都是精确 category 匹配）
+- 新增其他精确 category tab 时，在 `fetchListings` 的条件里补充对应的 `industry value`
+
+### 未来可扩展的行业方案方向
+- 餐饮连锁 AI 运营助手
+- 医疗诊所 AI 助理系统
+- 教育机构 AI 管理中台
+- 物流仓储 AI 调度系统
+
 ## Technology Versions
 
 - Laravel 12.10.1, PHP 8.4.1, Sanctum 4.2.1, Pest 4.1.6

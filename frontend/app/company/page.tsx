@@ -176,7 +176,7 @@ export default function CompanyPage() {
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/" className="claw-btn-primary" style={{ padding: '12px 28px', fontSize: 15 }}>浏览 AI 员工</Link>
-              <a href="mailto:xiaomi@xingke888.com" className="claw-btn-ghost" style={{ padding: '12px 28px', fontSize: 15 }}>联系我们</a>
+              <a href="https://work.weixin.qq.com/kfid/kfcdfdb02ed73c8e4d0" target="_blank" rel="noopener noreferrer" className="claw-btn-ghost" style={{ padding: '12px 28px', fontSize: 15 }}>联系我们</a>
             </div>
           </section>
         </main>

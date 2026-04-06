@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { listingsApi, Listing } from "@/lib/api";
@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   ChevronLeft, ShoppingCart, CheckCircle2, ShieldCheck, Zap,
   Globe, Star, Download, Loader2, MessageSquare, FileText,
-  Package, User, BookOpen, ChevronDown, ChevronUp
+  Package, User, BookOpen, ChevronDown, ChevronUp, Play
 } from "lucide-react";
 import { ClawNav, ClawFooter, clawStyles } from "@/components/claw-layout";
 
@@ -56,7 +56,7 @@ function generateSkillMd(listing: Listing): string {
 name: ${listing.name}
 category: ${listing.category}
 version: v1.0.0
-price: ${parseFloat(listing.price) === 0 ? 'Free' : '¥' + listing.price}
+price: ${listing.category === '行业方案' ? '商务合作' : parseFloat(listing.price) === 0 ? 'Free' : '¥' + listing.price}
 status: ${listing.status}
 ---
 
@@ -134,6 +134,61 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('概览');
   const [securityExpanded, setSecurityExpanded] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
+  const [visibleMsgs, setVisibleMsgs] = useState<number[]>([]);
+  const [showTyping, setShowTyping] = useState(false);
+  const demoTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const msgsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (msgsRef.current) {
+      msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
+    }
+  }, [visibleMsgs, showTyping]);
+
+  const openDemo = useCallback(() => {
+    setShowDemo(true);
+    setVisibleMsgs([]);
+    setShowTyping(false);
+    demoTimers.current.forEach(clearTimeout);
+    demoTimers.current = [];
+  }, []);
+
+  const closeDemo = useCallback(() => {
+    setShowDemo(false);
+    demoTimers.current.forEach(clearTimeout);
+    setVisibleMsgs([]);
+    setShowTyping(false);
+  }, []);
+
+  const runDemoAnimation = useCallback((messages: { type: string; text: string }[]) => {
+    const count = messages.length;
+    const aiTyping  = count > 6 ? 1000 : 1400;
+    const aiRead    = count > 6 ? 1500 : 2200;
+    const userTyping = count > 6 ? 500  : 700;
+    const userRead   = count > 6 ? 700  : 1000;
+
+    let delay = 300;
+    messages.forEach((msg, i) => {
+      if (i > 0) {
+        const t1 = setTimeout(() => setShowTyping(true), delay);
+        demoTimers.current.push(t1);
+        delay += msg.type === 'ai' ? aiTyping : userTyping;
+      }
+      const t2 = setTimeout(() => {
+        setShowTyping(false);
+        setVisibleMsgs(prev => [...prev, i]);
+      }, delay);
+      demoTimers.current.push(t2);
+      delay += msg.type === 'ai' ? aiRead : userRead;
+    });
+  }, []);
+
+  const skipDemo = useCallback((messages: { type: string; text: string }[]) => {
+    demoTimers.current.forEach(clearTimeout);
+    setShowTyping(false);
+    setVisibleMsgs(messages.map((_, i) => i));
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -170,6 +225,14 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
         .catch(() => {});
     }
   }, [isAuthenticated, token, listing, paidFromStripe]);
+
+  // Auto-play demo for 行业方案 listings
+  useEffect(() => {
+    if (listing && listing.category === '行业方案' && listing.demo_messages && listing.demo_messages.length > 0) {
+      openDemo();
+      runDemoAnimation(listing.demo_messages);
+    }
+  }, [listing, openDemo, runDemoAnimation]);
 
   const handleBuy = async () => {
     if (!isAuthenticated) {
@@ -250,6 +313,7 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
   }
 
   const isFree = parseFloat(listing.price) === 0;
+  const isBusinessCooperation = listing.category === '行业方案';
   const isSold = listing.status === 'sold';
   const isOwned = owned || buySuccess;
   const seed = listing.id;
@@ -271,6 +335,85 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
       <style>{clawStyles + detailStyles}</style>
       <div className="claw-page">
         <ClawNav />
+
+        {/* Demo Modal - Phone Style */}
+        {showDemo && listing.demo_messages && (
+          <div className="detail-demo-overlay" onClick={closeDemo}>
+            <div className="detail-phone" onClick={e => e.stopPropagation()}>
+              <button className="detail-demo-close" onClick={closeDemo}>×</button>
+              <div className="detail-phone-inner">
+                <div className="detail-phone-statusbar">
+                  <div className="detail-phone-time">9:41</div>
+                  <div className="detail-phone-icons">
+                    <div className="detail-signal">
+                      <span /><span /><span /><span />
+                    </div>
+                    <div className="detail-wifi">▲</div>
+                    <div className="detail-battery">
+                      <div className="detail-battery-body"><div className="detail-battery-fill" /></div>
+                      <div className="detail-battery-tip" />
+                    </div>
+                  </div>
+                </div>
+                <div className="detail-phone-island" />
+                <div className="detail-phone-screen">
+                  <div className="detail-phone-topbar">
+                    <div className="detail-phone-avatar">
+                      <img
+                        src={(() => {
+                          const styles = ['shapes', 'icons', 'identicon', 'rings', 'bottts'];
+                          const style = styles[listing.id % styles.length];
+                          return `https://api.dicebear.com/9.x/${style}/svg?seed=${listing.id}&size=36&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
+                        })()}
+                        alt=""
+                        width={36} height={36}
+                        style={{ borderRadius: '50%', display: 'block' }}
+                      />
+                    </div>
+                    <div>
+                      <div className="detail-phone-name">{listing.name}</div>
+                      <div className="detail-phone-status">在线</div>
+                    </div>
+                  </div>
+                  <div className="detail-phone-msgs" ref={msgsRef}>
+                    {listing.demo_messages.map((msg, i) => (
+                      visibleMsgs.includes(i) && (
+                        <div key={i} className={`detail-msg ${msg.type} visible`} style={{ whiteSpace: 'pre-line' }}>
+                          {msg.text.replace(/\\n/g, '\n')}
+                        </div>
+                      )
+                    ))}
+                    {showTyping && (
+                      <div className="detail-typing visible">
+                        <span /><span /><span />
+                      </div>
+                    )}
+                  </div>
+                  {visibleMsgs.length < listing.demo_messages.length && (
+                    <div style={{
+                      padding: '8px 14px',
+                      borderTop: '1px solid rgba(42,31,25,0.08)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: '#fff', flexShrink: 0,
+                    }}>
+                      <span style={{ fontSize: 11, color: '#9e8074', fontFamily: "'Manrope',sans-serif" }}>
+                        {visibleMsgs.length} / {listing.demo_messages.length} 条
+                      </span>
+                      <button onClick={() => skipDemo(listing.demo_messages!)} style={{
+                        fontSize: 11, fontWeight: 700, color: '#E65C46',
+                        background: 'rgba(230,92,70,0.08)', border: '1px solid rgba(230,92,70,0.25)',
+                        borderRadius: 100, padding: '3px 12px', cursor: 'pointer',
+                        fontFamily: "'Manrope',sans-serif",
+                      }}>
+                        ⚡ 展示全部
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Success Toast */}
         {showSuccessToast && (
@@ -329,6 +472,29 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
                         {listing.name}
                       </h1>
                       <span className="claw-card-badge" style={{ marginTop: 6, flexShrink: 0 }}>{listing.category}</span>
+                      {listing.demo_messages && listing.demo_messages.length > 0 && (
+                        <button
+                          onClick={() => { openDemo(); runDemoAnimation(listing.demo_messages!); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            marginTop: 5,
+                            padding: '4px 12px',
+                            background: 'rgba(230,92,70,0.08)',
+                            color: '#E65C46',
+                            border: '1px solid rgba(230,92,70,0.28)',
+                            borderRadius: 100,
+                            fontSize: 12.5, fontWeight: 700,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseOver={e => { e.currentTarget.style.background = 'rgba(230,92,70,0.16)'; }}
+                          onMouseOut={e => { e.currentTarget.style.background = 'rgba(230,92,70,0.08)'; }}
+                        >
+                          <Play size={11} fill="#E65C46" />
+                          查看演示
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -659,7 +825,7 @@ ${(listing.description || '技能描述').split('\n')[0].substring(0, 80)}
                     fontWeight: 800,
                     color: isFree ? '#4a9e6b' : '#2A1F19',
                   }}>
-                    {isFree ? '免费' : `¥${listing.price}`}
+                    {isBusinessCooperation ? '商务合作' : isFree ? '免费' : `¥${listing.price}`}
                   </span>
                   {isSold && (
                     <span style={{ background: 'rgba(42,31,25,0.08)', color: '#6B5549', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 100 }}>已售罄</span>
@@ -703,6 +869,16 @@ ${(listing.description || '技能描述').split('\n')[0].substring(0, 80)}
                         查看我的购买 →
                       </Link>
                     </>
+                  ) : isBusinessCooperation ? (
+                    <a
+                      href="https://work.weixin.qq.com/kfid/kfcdfdb02ed73c8e4d0"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="claw-btn-primary"
+                      style={{ justifyContent: 'center', padding: '13px 20px', fontSize: 15, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <ShoppingCart size={16} />联系商务合作
+                    </a>
                   ) : (
                     <button
                       className="claw-btn-primary"
@@ -722,6 +898,28 @@ ${(listing.description || '技能描述').split('\n')[0].substring(0, 80)}
                   <Link href="/sourcing" className="claw-btn-ghost" style={{ justifyContent: 'center', padding: '11px 20px', fontSize: 14, textDecoration: 'none' }}>
                     提交定制化需求
                   </Link>
+
+                  {listing.demo_messages && listing.demo_messages.length > 0 && (
+                    <button
+                      onClick={() => { openDemo(); runDemoAnimation(listing.demo_messages!); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                        padding: '10px 20px',
+                        background: 'rgba(230,92,70,0.07)',
+                        color: '#E65C46',
+                        border: '1px solid rgba(230,92,70,0.25)',
+                        borderRadius: 10,
+                        fontSize: 13.5, fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.background = 'rgba(230,92,70,0.13)'; }}
+                      onMouseOut={e => { e.currentTarget.style.background = 'rgba(230,92,70,0.07)'; }}
+                    >
+                      <Play size={14} fill="#E65C46" />
+                      查看演示
+                    </button>
+                  )}
                 </div>
 
                 <hr style={{ border: 'none', borderTop: '1px solid rgba(42,31,25,0.08)', margin: '0 0 18px' }} />
@@ -824,6 +1022,102 @@ const detailStyles = `
 
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  /* Phone demo modal */
+  .detail-demo-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 9998;
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .detail-phone {
+    width: 310px;
+    background: linear-gradient(160deg, #2a2a2e 0%, #1a1a1e 100%);
+    border-radius: 48px;
+    padding: 14px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 40px 100px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.12);
+    position: relative;
+    animation: slideUp 0.35s cubic-bezier(.22,1,.36,1);
+  }
+  .detail-phone::before {
+    content: ''; position: absolute; left: -3px; top: 90px;
+    width: 3px; height: 34px; background: #333; border-radius: 3px 0 0 3px;
+    box-shadow: 0 44px 0 #333;
+  }
+  .detail-phone::after {
+    content: ''; position: absolute; right: -3px; top: 110px;
+    width: 3px; height: 54px; background: #333; border-radius: 0 3px 3px 0;
+  }
+  @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .detail-phone-inner {
+    background: #000; border-radius: 36px; overflow: hidden;
+    display: flex; flex-direction: column; height: 580px;
+  }
+  .detail-phone-statusbar {
+    background: #000; padding: 10px 18px 4px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .detail-phone-time { font-size: 13px; font-weight: 700; color: #fff; font-family: -apple-system, sans-serif; letter-spacing: -0.3px; }
+  .detail-phone-icons { display: flex; align-items: center; gap: 5px; }
+  .detail-signal { display: flex; align-items: flex-end; gap: 1.5px; height: 11px; }
+  .detail-signal span { display: block; width: 3px; background: #fff; border-radius: 1px; }
+  .detail-signal span:nth-child(1) { height: 3px; }
+  .detail-signal span:nth-child(2) { height: 5px; }
+  .detail-signal span:nth-child(3) { height: 7px; }
+  .detail-signal span:nth-child(4) { height: 11px; }
+  .detail-wifi { font-size: 11px; color: #fff; line-height: 1; }
+  .detail-battery { display: flex; align-items: center; gap: 1px; }
+  .detail-battery-body { width: 22px; height: 11px; border: 1.5px solid rgba(255,255,255,0.7); border-radius: 2.5px; padding: 1.5px; }
+  .detail-battery-fill { background: #fff; border-radius: 1px; height: 100%; width: 75%; }
+  .detail-battery-tip { width: 2px; height: 5px; background: rgba(255,255,255,0.5); border-radius: 0 1px 1px 0; }
+  .detail-phone-island {
+    width: 100px; height: 30px; background: #000; border-radius: 20px;
+    margin: 0 auto 6px; position: relative; z-index: 2; flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .detail-phone-screen {
+    background: #F8F2ED; flex: 1; overflow: hidden;
+    display: flex; flex-direction: column; border-radius: 0 0 34px 34px;
+  }
+  .detail-phone-topbar {
+    background: #fff; padding: 10px 14px;
+    border-bottom: 1px solid rgba(42,31,25,0.08);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .detail-phone-avatar { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: #F0E8E1; box-shadow: 0 2px 8px rgba(230,92,70,0.2); }
+  .detail-phone-name { font-size: 13px; font-weight: 700; color: #2A1F19; font-family: 'Manrope', sans-serif; }
+  .detail-phone-status { font-size: 11px; color: #22c55e; font-family: 'Manrope', sans-serif; display: flex; align-items: center; gap: 3px; }
+  .detail-phone-status::before { content: ''; width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block; }
+  .detail-phone-msgs { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; scroll-behavior: smooth; }
+  .detail-msg {
+    max-width: 80%; padding: 10px 14px; border-radius: 18px;
+    font-size: 13px; line-height: 1.5; font-family: 'Manrope', sans-serif;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .detail-msg.visible { opacity: 1; transform: translateY(0); }
+  .detail-msg.ai { background: #fff; color: #2A1F19; border-bottom-left-radius: 4px; align-self: flex-start; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .detail-msg.user { background: #E65C46; color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+  .detail-typing {
+    display: flex; gap: 4px; align-items: center; padding: 10px 14px;
+    background: #fff; border-radius: 18px; border-bottom-left-radius: 4px;
+    width: fit-content; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .detail-typing.visible { opacity: 1; }
+  .detail-typing span { width: 6px; height: 6px; background: #9e8074; border-radius: 50%; animation: bounce 1.2s infinite; }
+  .detail-typing span:nth-child(2) { animation-delay: 0.2s; }
+  .detail-typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+  .detail-demo-close {
+    position: absolute; top: -16px; right: -16px;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #fff; border: none; cursor: pointer; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); color: #2A1F19;
+  }
 
   @media (max-width: 800px) {
     .detail-layout { grid-template-columns: 1fr; gap: 28px; }

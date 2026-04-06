@@ -6,11 +6,12 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { LayoutDashboard, ShoppingBag, Settings, LogOut, Store, ChevronDown, Search, Menu, X } from "lucide-react";
 
-const NAV_LINKS = [
-  { label: "人才市场", href: "/" },
-  { label: "299元安装龙虾", href: "/install-service", accent: true },
-  { label: "前沿", href: "/blog" },
-  { label: "关于", href: "/about" },
+const NAV_LINKS: { label: string; href: string; accent?: boolean }[] = [
+  { label: "企业龙虾解决方案", href: "/" },
+  { label: "技能库", href: "/skills" },
+  { label: "一站式组装", href: "/assemble" },
+  { label: "一人公司", href: "/sourcing" },
+  { label: "创作者", href: "/about" },
   { label: "技能定制", href: "/skill-custom" },
 ];
 
@@ -207,8 +208,8 @@ export function ClawNav() {
         }}>
           <Link href="/" style={{
             fontFamily: "'Bricolage Grotesque', 'Manrope', sans-serif",
-            fontSize: 20,
-            fontWeight: 700,
+            fontSize: 24,
+            fontWeight: 400,
             color: '#2A1F19',
             textDecoration: 'none',
             display: 'flex',
@@ -216,7 +217,7 @@ export function ClawNav() {
             gap: 8,
           }}>
             <img src="/logo.png" alt="OpenClaw" style={{ width: 36, height: 36, objectFit: 'contain' }} />
-            CLAW MART 龙虾市场
+            CLAWMART 龙虾中国
           </Link>
 
           {/* Desktop nav */}
@@ -420,6 +421,7 @@ export function ClawNav() {
 
 export function ClawFooter() {
   return (
+    <>
     <footer style={{
       borderTop: '1px solid rgba(42, 31, 25, 0.1)',
       marginTop: 64,
@@ -502,6 +504,37 @@ export function ClawFooter() {
         </div>
       </div>
     </footer>
+    <a
+      href="https://wa.me/85262645180"
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        position: 'fixed',
+        bottom: 28,
+        right: 28,
+        zIndex: 9999,
+        width: 52,
+        height: 52,
+        borderRadius: '50%',
+        background: '#25D366',
+        boxShadow: '0 4px 16px rgba(37,211,102,0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        transition: 'transform 0.15s, box-shadow 0.15s',
+        textDecoration: 'none',
+      }}
+      onMouseOver={e => { (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1.1)'; (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 6px 20px rgba(37,211,102,0.55)'; }}
+      onMouseOut={e => { (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 4px 16px rgba(37,211,102,0.45)'; }}
+      aria-label="WhatsApp联系"
+    >
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 3C8.82 3 3 8.82 3 16c0 2.34.64 4.63 1.84 6.63L3 29l6.54-1.82A13 13 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3z" fill="#fff"/>
+        <path d="M22.5 19.5c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.87 1.22 3.07.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z" fill="#25D366"/>
+      </svg>
+    </a>
+    </>
   );
 }
 

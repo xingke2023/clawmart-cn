@@ -392,15 +392,53 @@ export default function SkillCustomPage() {
             例如：爬取特定网站、操作专有系统、自动化复杂工作流——任何重复性的数字工作，都可以变成一个 AI 技能，永久为你运行。
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-            <button className="claw-btn-primary" style={{ fontSize: 15, padding: '12px 28px' }}
-              onClick={() => document.getElementById('order-form')?.scrollIntoView({ behavior: 'smooth' })}>
+            <a href="https://work.weixin.qq.com/kfid/kfcdfdb02ed73c8e4d0" target="_blank" rel="noopener noreferrer" className="claw-btn-primary" style={{ fontSize: 15, padding: '12px 28px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <Zap size={16} />
               立即提交需求
-            </button>
+            </a>
             <button className="claw-btn-ghost" style={{ fontSize: 15, padding: '12px 28px' }}
               onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}>
               查看演示
             </button>
+          </div>
+        </section>
+
+        <hr className="claw-divider" />
+
+        {/* Phone Demo */}
+        <section id="demo" style={{ padding: '56px 24px', maxWidth: 1200, margin: '0 auto' }}>
+          <div className="claw-label">实际效果演示</div>
+          <div className="sc-demo-layout">
+            <div className="sc-demo-text">
+              <h2 className="claw-h2">看技能如何真正工作</h2>
+              <p className="claw-lead">选择一个场景，看 AI 技能如何接收指令、执行任务、反馈结果。</p>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
+                {DEMO_CASES.map((c, i) => (
+                  <button key={i} className={`sc-demo-tab${activeDemo === i ? ' active' : ''}`}
+                    onClick={() => setActiveDemo(i)}>
+                    {c.avatar} {c.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="claw-highlight-box">
+                <div style={{ fontWeight: 700, color: '#2A1F19', fontSize: 15, marginBottom: 6 }}>
+                  📌 这是真实工作场景
+                </div>
+                <div style={{ fontSize: 13, color: '#6B5549', lineHeight: 1.7 }}>
+                  技能安装到 OpenClaw 后，你只需用自然语言下达指令。技能自动登录目标系统/网站，完成操作，将结果结构化返回——无需你全程盯守。
+                </div>
+              </div>
+            </div>
+
+            <PhoneDemo
+              key={activeDemo}
+              msgs={DEMO_CASES[activeDemo].messages}
+              avatar={DEMO_CASES[activeDemo].avatar}
+              bg={DEMO_CASES[activeDemo].bg}
+              name={DEMO_CASES[activeDemo].label}
+            />
           </div>
         </section>
 
@@ -465,45 +503,6 @@ export default function SkillCustomPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        <hr className="claw-divider" />
-
-        {/* Phone Demo */}
-        <section id="demo" style={{ padding: '56px 24px', maxWidth: 1200, margin: '0 auto' }}>
-          <div className="claw-label">实际效果演示</div>
-          <div className="sc-demo-layout">
-            <div className="sc-demo-text">
-              <h2 className="claw-h2">看技能如何真正工作</h2>
-              <p className="claw-lead">选择一个场景，看 AI 技能如何接收指令、执行任务、反馈结果。</p>
-
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
-                {DEMO_CASES.map((c, i) => (
-                  <button key={i} className={`sc-demo-tab${activeDemo === i ? ' active' : ''}`}
-                    onClick={() => setActiveDemo(i)}>
-                    {c.avatar} {c.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="claw-highlight-box">
-                <div style={{ fontWeight: 700, color: '#2A1F19', fontSize: 15, marginBottom: 6 }}>
-                  📌 这是真实工作场景
-                </div>
-                <div style={{ fontSize: 13, color: '#6B5549', lineHeight: 1.7 }}>
-                  技能安装到 OpenClaw 后，你只需用自然语言下达指令。技能自动登录目标系统/网站，完成操作，将结果结构化返回——无需你全程盯守。
-                </div>
-              </div>
-            </div>
-
-            <PhoneDemo
-              key={activeDemo}
-              msgs={DEMO_CASES[activeDemo].messages}
-              avatar={DEMO_CASES[activeDemo].avatar}
-              bg={DEMO_CASES[activeDemo].bg}
-              name={DEMO_CASES[activeDemo].label}
-            />
           </div>
         </section>
 
@@ -593,7 +592,7 @@ export default function SkillCustomPage() {
 
         {/* Order form */}
         <section id="order-form" style={{ padding: '56px 24px', background: 'rgba(240,232,225,0.5)' }}>
-          <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
             <div className="claw-label">提交需求</div>
             <h2 className="claw-h2">告诉我们你想自动化什么</h2>
             <p className="claw-lead" style={{ fontSize: 15 }}>24小时内回复，免费提供方案和报价。</p>
@@ -647,7 +646,7 @@ export default function SkillCustomPage() {
         <hr className="claw-divider" />
 
         {/* FAQ */}
-        <section style={{ padding: '56px 24px', maxWidth: 720, margin: '0 auto' }}>
+        <section style={{ padding: '56px 24px', maxWidth: 1200, margin: '0 auto' }}>
           <div className="claw-label">常见问题</div>
           <h2 className="claw-h2">你可能想问</h2>
           <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
