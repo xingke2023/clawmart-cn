@@ -7,12 +7,10 @@ import { useAuth } from "@/lib/auth-context";
 import { LayoutDashboard, ShoppingBag, Settings, LogOut, Store, ChevronDown, Search, Menu, X } from "lucide-react";
 
 const NAV_LINKS: { label: string; href: string; accent?: boolean }[] = [
-  { label: "企业龙虾解决方案", href: "/" },
+  { label: "AI门店", href: "/" },
   { label: "技能库", href: "/skills" },
-  { label: "一站式组装", href: "/assemble" },
-  { label: "一人公司", href: "/sourcing" },
-  { label: "创作者", href: "/about" },
-  { label: "技能定制", href: "/skill-custom" },
+  { label: "一站式龙虾", href: "/assemble" },
+  { label: "✨ AI 创作", href: "/skill-creator", accent: true },
 ];
 
 export function ClawNav() {
@@ -100,13 +98,13 @@ export function ClawNav() {
           padding: 0 10px;
           gap: 6px;
           height: 36px;
-          width: 220px;
+          width: 160px;
           transition: background 0.15s, width 0.2s;
         }
         .claw-nav-search-form:focus-within {
           background: white;
           box-shadow: 0 0 0 1.5px #E65C46;
-          width: 280px;
+          width: 220px;
         }
         .claw-nav-search-input {
           border: none;
@@ -228,14 +226,11 @@ export function ClawNav() {
                   key={link.href}
                   href={link.href}
                   style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: 'white',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: '#6B5549',
                     textDecoration: 'none',
                     fontFamily: "'Manrope', sans-serif",
-                    background: '#E65C46',
-                    padding: '5px 12px',
-                    borderRadius: 100,
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -258,16 +253,23 @@ export function ClawNav() {
               )
             ))}
 
-            <form onSubmit={handleNavSearch} className="claw-nav-search-form">
-              <Search size={14} style={{ color: '#9e8074', flexShrink: 0 }} />
-              <input
-                type="text"
-                className="claw-nav-search-input"
-                placeholder="搜索技能..."
-                value={navSearch}
-                onChange={e => setNavSearch(e.target.value)}
-              />
-            </form>
+            {/* GitHub 链接 */}
+            <a
+              href="https://github.com/xingke2023/clawmart"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                color: '#6B5549', fontSize: 13, fontWeight: 500,
+                fontFamily: "'Manrope', sans-serif", padding: '4px 2px',
+                textDecoration: 'none',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+              </svg>
+              GitHub
+            </a>
 
             {isAuthenticated ? (
               <div ref={dropRef} style={{ position: 'relative' }}>
@@ -504,36 +506,6 @@ export function ClawFooter() {
         </div>
       </div>
     </footer>
-    <a
-      href="https://wa.me/85262645180"
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        position: 'fixed',
-        bottom: 28,
-        right: 28,
-        zIndex: 9999,
-        width: 52,
-        height: 52,
-        borderRadius: '50%',
-        background: '#25D366',
-        boxShadow: '0 4px 16px rgba(37,211,102,0.45)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        transition: 'transform 0.15s, box-shadow 0.15s',
-        textDecoration: 'none',
-      }}
-      onMouseOver={e => { (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1.1)'; (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 6px 20px rgba(37,211,102,0.55)'; }}
-      onMouseOut={e => { (e.currentTarget as HTMLAnchorElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 4px 16px rgba(37,211,102,0.45)'; }}
-      aria-label="WhatsApp联系"
-    >
-      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16 3C8.82 3 3 8.82 3 16c0 2.34.64 4.63 1.84 6.63L3 29l6.54-1.82A13 13 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3z" fill="#fff"/>
-        <path d="M22.5 19.5c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51-.17-.01-.37-.01-.57-.01-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.87 1.22 3.07.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z" fill="#25D366"/>
-      </svg>
-    </a>
     </>
   );
 }
