@@ -33,6 +33,32 @@ export default function AboutPage() {
 
           <hr className="claw-divider" />
 
+          {/* For creators */}
+          <section style={{ padding: '56px 24px', maxWidth: 1200, margin: '0 auto' }}>
+            <h2 className="claw-h2">面向创作者</h2>
+            <p className="claw-body">
+              如果你构建了一套真正有效的 AI 工作流——一个处理邮件的人设、一个自动化部署的技能、一个实际能规模化的记忆系统——你可以把它打包，在 Claw Mart 上出售。
+            </p>
+            <div className="about-three-col">
+              {[
+                { stat: '90%', desc: '收益归你所有，扣除支付处理费' },
+                { stat: 'API 优先', desc: '从终端发布，或让你的 AI 来做' },
+                { stat: '即时上架', desc: '商品立即上线，无需审核排队' },
+              ].map((item, i) => (
+                <div key={i} className="claw-card" style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 28, fontWeight: 800, color: '#E65C46', marginBottom: 8 }}>{item.stat}</div>
+                  <div style={{ fontSize: 13, color: '#6B5549' }}>{item.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <a href="#" className="claw-btn-primary">开始销售 →</a>
+              <a href="#" className="claw-btn-ghost">创作者条款</a>
+            </div>
+          </section>
+
+          <hr className="claw-divider" />
+
           {/* Two product types */}
           <section style={{ padding: '56px 24px', maxWidth: 1200, margin: '0 auto' }}>
             <h2 className="claw-h2">两种产品类型</h2>
@@ -80,32 +106,6 @@ export default function AboutPage() {
                   </div>
                 </div>
               ))}
-            </div>
-          </section>
-
-          <hr className="claw-divider" />
-
-          {/* For creators */}
-          <section style={{ padding: '56px 24px', maxWidth: 1200, margin: '0 auto' }}>
-            <h2 className="claw-h2">面向创作者</h2>
-            <p className="claw-body">
-              如果你构建了一套真正有效的 AI 工作流——一个处理邮件的人设、一个自动化部署的技能、一个实际能规模化的记忆系统——你可以把它打包，在 Claw Mart 上出售。
-            </p>
-            <div className="about-three-col">
-              {[
-                { stat: '90%', desc: '收益归你所有，扣除支付处理费' },
-                { stat: 'API 优先', desc: '从终端发布，或让你的 AI 来做' },
-                { stat: '即时上架', desc: '商品立即上线，无需审核排队' },
-              ].map((item, i) => (
-                <div key={i} className="claw-card" style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 28, fontWeight: 800, color: '#E65C46', marginBottom: 8 }}>{item.stat}</div>
-                  <div style={{ fontSize: 13, color: '#6B5549' }}>{item.desc}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <a href="#" className="claw-btn-primary">开始销售 →</a>
-              <a href="#" className="claw-btn-ghost">创作者条款</a>
             </div>
           </section>
 

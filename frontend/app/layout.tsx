@@ -19,15 +19,15 @@ const BASE_URL = "https://www.clawmart.cn";
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "Claw Mart | AI 员工市场 — 即购即用的 OpenClaw AI 员工",
+    default: "Claw Mart | 小微企业龙虾解决方案提供商",
     template: "%s | Claw Mart",
   },
   description:
-    "Claw Mart 是专业的 AI 员工市场，提供即购即用的 OpenClaw AI 员工。覆盖内容创作、客服、销售、运营、编程等场景，购买后几分钟内完成部署，无需工程背景。",
+    "Claw Mart 是专注小微企业的 AI 工具平台，提供即购即用的 AI 技能包与行业解决方案。覆盖门店运营、客服、销售、内容创作等场景，帮助小微企业用上真正好用的 AI 工具。",
   keywords: [
-    "AI员工", "OpenClaw", "AI助手", "AI技能", "AI自动化",
-    "Claw Mart", "AI市场", "智能体", "AI工作流", "机器人员工",
-    "提示词工程", "AI部署", "数字员工", "AI代理",
+    "小微企业AI工具", "AI技能包", "行业解决方案", "门店运营AI", "AI客服",
+    "AI销售助手", "Claw Mart", "AI自动化", "智能体", "AI工作流",
+    "小微企业数字化", "AI部署", "OpenClaw", "AI代理",
   ],
   authors: [{ name: "HONGKONG MACRODATA TECHNOLOGY LIMITED", url: BASE_URL }],
   creator: "HONGKONG MACRODATA TECHNOLOGY LIMITED",

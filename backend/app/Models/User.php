@@ -27,6 +27,7 @@ class User extends Authenticatable implements FilamentUser
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'avatar_url',
@@ -67,5 +68,10 @@ class User extends Authenticatable implements FilamentUser
     public function purchases()
     {
         return $this->hasMany(Purchase::class);
+    }
+
+    public function storeProfile()
+    {
+        return $this->hasOne(StoreProfile::class);
     }
 }

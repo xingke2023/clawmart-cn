@@ -360,6 +360,12 @@ export default function AssemblePage() {
           align-self: flex-start;
         }
         .assemble-demo-btn:hover { background: rgba(230,92,70,0.15); }
+        .assemble-layout {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 40px;
+          align-items: start;
+        }
         .assemble-summary {
           position: sticky;
           top: 72px;
@@ -374,16 +380,47 @@ export default function AssemblePage() {
           position: fixed; inset: 0; background: rgba(0,0,0,0.6);
           z-index: 1000; display: flex; align-items: center; justify-content: center;
           animation: fadeIn 0.2s ease;
+          padding: 16px;
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      `}</style>
+
+        /* 手机端悬浮底栏 */
+        .assemble-mobile-bar {
+          display: none;
+          position: fixed;
+          bottom: 0; left: 0; right: 0;
+          background: #fff;
+          border-top: 1px solid rgba(42,31,25,0.1);
+          padding: 12px 16px;
+          z-index: 200;
+          box-shadow: 0 -4px 24px rgba(42,31,25,0.1);
+        }
+
+        @media (max-width: 768px) {
+          .assemble-layout {
+            grid-template-columns: 1fr;
+          }
+          .assemble-summary {
+            display: none;
+          }
+          .assemble-mobile-bar {
+            display: block;
+          }
+          .assemble-skill-card {
+            padding: 12px 12px;
+          }
+          .assemble-hero-h1 {
+            font-size: 1.8rem !important;
+          }
+        }
+`}</style>
       <div className="claw-page">
         <ClawNav />
 
         <main>
           {/* Hero */}
           <section style={{ padding: '64px 24px 40px', maxWidth: 1200, margin: '0 auto' }}>
-            <h1 className="claw-h1">
+            <h1 className="claw-h1 assemble-hero-h1">
               像搭积木一样，五分钟组装好你的AI龙虾，<br /><span className="claw-accent">微信扫码绑定就可以马上开始工作</span>
             </h1>
             <p className="claw-lead" style={{ maxWidth: 620 }}>
@@ -399,8 +436,8 @@ export default function AssemblePage() {
           <hr className="claw-divider" />
 
           {/* Main layout */}
-          <section style={{ padding: '40px 24px 80px', maxWidth: 1200, margin: '0 auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 40, alignItems: 'start' }}>
+          <section style={{ padding: '40px 24px 100px', maxWidth: 1200, margin: '0 auto' }}>
+            <div className="assemble-layout">
 
               {/* Left: skill groups */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -540,6 +577,46 @@ export default function AssemblePage() {
             </div>
           </div>
         )}
+
+        {/* 手机端底部悬浮栏 */}
+        <div className="assemble-mobile-bar">
+          {!submitted ? (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1F19', marginBottom: 4 }}>
+                  已选 <span style={{ color: '#E65C46' }}>{selected.size}</span> 个技能
+                </div>
+                <input
+                  required
+                  value={contact}
+                  onChange={e => setContact(e.target.value)}
+                  placeholder="微信/手机/邮箱"
+                  className="claw-input"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', fontSize: 13 }}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={selected.size === 0}
+                className="claw-btn-primary"
+                style={{
+                  padding: '12px 18px', fontSize: 14, fontWeight: 700,
+                  border: 'none', cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+                  borderRadius: 10, opacity: selected.size === 0 ? 0.5 : 1,
+                  flexShrink: 0, whiteSpace: 'nowrap',
+                }}
+              >
+                <Zap size={14} style={{ display: 'inline', marginRight: 4 }} />
+                立即启动
+              </button>
+            </form>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', padding: '4px 0' }}>
+              <CheckCircle2 size={22} style={{ color: '#4a9e6b' }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#2A1F19' }}>龙虾启动中！我们 2 小时内联系你。</span>
+            </div>
+          )}
+        </div>
 
         <ClawFooter />
       </div>

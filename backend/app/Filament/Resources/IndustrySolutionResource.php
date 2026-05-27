@@ -6,10 +6,14 @@ use App\Filament\Resources\IndustrySolutionResource\Pages;
 use App\Models\IndustrySolution;
 use App\Models\Listing;
 use App\Services\IndustryGeneratorService;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -17,14 +21,14 @@ use Illuminate\Support\Str;
 class IndustrySolutionResource extends Resource
 {
     protected static ?string $model = IndustrySolution::class;
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-storefront';
     protected static ?string $navigationLabel = '行业方案';
-    protected static ?string $navigationGroup = 'AI 内容工具';
+    protected static string|\UnitEnum|null $navigationGroup = 'AI 内容工具';
     protected static ?int $navigationSort = 1;
     protected static ?string $modelLabel = '行业方案';
     protected static ?string $pluralModelLabel = '行业方案';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form->schema([
             Forms\Components\Section::make('基础信息')->columns(2)->schema([
@@ -73,7 +77,7 @@ class IndustrySolutionResource extends Resource
                 ]),
             ])
             ->actions([
-                Tables\Actions\Action::make('generate_solution')
+                Action::make('generate_solution')
                     ->label('生成方案')
                     ->icon('heroicon-o-sparkles')
                     ->color('primary')
@@ -98,7 +102,7 @@ class IndustrySolutionResource extends Resource
                         }
                     }),
 
-                Tables\Actions\Action::make('generate_demo')
+                Action::make('generate_demo')
                     ->label('设计演示')
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->color('success')
@@ -132,10 +136,10 @@ class IndustrySolutionResource extends Resource
                         }
                     }),
 
-                Tables\Actions\EditAction::make()->label('编辑'),
+                EditAction::make()->label('编辑'),
             ])
             ->headerActions([
-                Tables\Actions\Action::make('expand_industries')
+                Action::make('expand_industries')
                     ->label('✨ 扩展行业库')
                     ->icon('heroicon-o-plus-circle')
                     ->color('warning')
@@ -233,7 +237,7 @@ class IndustrySolutionResource extends Resource
                     }),
             ])
             ->bulkActions([
-                Tables\Actions\BulkAction::make('bulk_generate')
+                BulkAction::make('bulk_generate')
                     ->label('批量生成方案')->icon('heroicon-o-sparkles')->requiresConfirmation()
                     ->action(function($records): void {
                         $svc = app(IndustryGeneratorService::class);
@@ -252,7 +256,7 @@ class IndustrySolutionResource extends Resource
                         }
                         Notification::make()->title("批量完成：成功{$ok}，失败{$fail}")->success()->send();
                     }),
-                Tables\Actions\DeleteBulkAction::make(),
+                DeleteBulkAction::make(),
             ]);
     }
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { listingsApi, Listing, ListingParams, DemoMessage, DemoPersona } from "@/lib/api";
+import { listingsApi, storeApi, Listing, ListingParams, DemoMessage, DemoPersona, StoreProduct, StoreBooking } from "@/lib/api";
 import { Star, Download, Loader2 } from "lucide-react";
 import { ClawNav, ClawFooter } from "@/components/claw-layout";
 import { useAuth } from "@/lib/auth-context";
@@ -110,6 +110,152 @@ const SORT_OPTIONS = [
   { label: "价格：从高到低", value: "price_desc" },
 ];
 
+const BANK_PRODUCT_MSGS = [
+  { from: 'user', text: '新客户李女士，45岁，500万资产，想稳健一点，但希望跑赢通胀，怎么给她推？' },
+  { from: 'ai',   text: '✅ 已建立李女士临时档案\n• 年龄：45岁  资产：¥500万  风格：稳健型\n\n📊 KYC 智能评估：\n建议风险等级定为 R2-R3（稳健偏积极）\n\n💡 推荐组合（合规通过）：\n① 50% — 国债逆回购 + 大额存单（保本打底）\n② 30% — 固收+混合基金（年化目标5-7%）\n③ 20% — 沪深红利低波ETF（跑赢通胀锚）\n\n是否生成完整产品说明书和面谈话术？' },
+  { from: 'user', text: '生成话术，另外她问过理财亏损怎么解释' },
+  { from: 'ai',   text: '✅ 完整面谈话术已生成（含开场白、产品介绍、异议处理）\n\n📌 关于"理财亏损"的合规应对话术：\n"市场短期波动在所难免，我们选择的产品历史最大回撤控制在5%以内，长期持有3年以上胜率达92%……"\n\n⚠️ 合规提示：请勿承诺保本或固定收益。' },
+  { from: 'user', text: '她还在纠结要不要把房子卖了全投进来' },
+  { from: 'ai',   text: '⚠️ 重要提示：切勿建议客户变卖主要资产全仓投入。\n\n💡 合规建议话术：\n"李女士，房产是家庭主要资产，不建议轻易变现。我们先从您现有的流动资金开始规划，做好了再逐步加仓……"\n\n✅ 本建议已通过合规审核，可直接引用。' },
+  { from: 'user', text: '好的，她问第一笔最低门槛是多少' },
+  { from: 'ai',   text: '📋 各产品最低申购门槛：\n• 国债逆回购：¥10万起\n• 大额存单：¥20万起（3年期，4.1%）\n• 固收+基金：¥1,000起\n• 红利ETF：¥1,000起\n\n💡 建议首次配置方案（¥100万起步）：\n① ¥50万 — 大额存单（安全底仓）\n② ¥30万 — 固收+基金\n③ ¥20万 — 红利ETF\n\n风险分散，体验感好，后续容易加仓。' },
+  { from: 'user', text: '她同意了，要开始办手续' },
+  { from: 'ai',   text: '✅ 已为李女士生成开户流程指引：\n\n第一步：风险承受能力测评（约5分钟）\n第二步：签署产品认购协议\n第三步：资金划转，建议分3笔转入\n\n📎 所需材料：身份证原件、银行卡、手机号\n⏱ 预计全流程约45分钟\n\n是否预约今天下午3点办理？' },
+  { from: 'user', text: '预约3点，她老公也想了解，下次带老公一起来' },
+  { from: 'ai',   text: '✅ 已预约：今天下午3:00 李女士开户办理\n✅ CRM已备注：下次拜访须邀请其配偶同席\n\n📝 已为李女士配偶预建联系人档案\n💡 下次见面可推介家庭资产配置方案，转化概率更高。\n\n今天15:00前我会提醒您准备相关材料 📂' },
+  { from: 'user', text: '太好了，今天还有几个客户要跟进，帮我排个优先级' },
+  { from: 'ai',   text: '📊 今日待跟进客户优先级排序：\n\n🔴 高优先（今日必联）\n① 张先生 — 定期存款明天到期，需续期或转投\n② 刘总 — 上周承诺的产品方案今天要给回复\n\n🟡 中优先（本周跟进）\n③ 赵女士 — 近期有购房需求变化\n④ 孙先生 — 风险测评快到期，需重新评估\n\n🟢 常规维护\n⑤ 其余6位客户 — 本月例行问候即可' },
+];
+
+function BankProductChat() {
+  const [visibleCount, setVisibleCount] = useState(1);
+  const [isTyping, setIsTyping] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (visibleCount >= BANK_PRODUCT_MSGS.length) return;
+    const msg = BANK_PRODUCT_MSGS[visibleCount];
+    const typingDelay = msg.from === 'ai' ? 1400 : 800;
+    const readDelay = msg.from === 'ai' ? 2200 : 1200;
+    const t1 = setTimeout(() => setIsTyping(true), readDelay);
+    const t2 = setTimeout(() => {
+      setIsTyping(false);
+      setVisibleCount(v => v + 1);
+    }, readDelay + typingDelay);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [visibleCount]);
+
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }, [visibleCount, isTyping]);
+
+  return (
+    <div className="bank-chat-card">
+      <div className="bank-chat-header">
+        <div className="bank-chat-avatar" style={{ background: 'rgba(42,31,25,0.06)', fontSize: 20 }}>📋</div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#2A1F19' }}>智能产品匹配 & 风险评估</div>
+          <div style={{ fontSize: 12, color: '#9e8074' }}>KYC 分析 / 合规推荐 / 话术辅助</div>
+        </div>
+        <div style={{ marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />
+      </div>
+      <div className="bank-chat-body" ref={bodyRef} style={{ overflowY: 'auto', maxHeight: 420 }}>
+        {BANK_PRODUCT_MSGS.slice(0, visibleCount).map((msg, i) => (
+          <div key={i} className={`bank-msg ${msg.from}`} style={{ animation: 'bankMsgIn 0.3s ease' }}>
+            <div className="bank-msg-avatar" style={msg.from === 'user' ? { background: '#E65C46', color: 'white' } : { background: '#F8F2ED' }}>
+              {msg.from === 'user' ? '经' : '🤖'}
+            </div>
+            <div className="bank-msg-bubble" style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
+          </div>
+        ))}
+        {isTyping && (
+          <div className="bank-msg ai">
+            <div className="bank-msg-avatar" style={{ background: '#F8F2ED' }}>🤖</div>
+            <div className="bank-msg-bubble" style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '10px 16px' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#9e8074', animation: 'bankDot 1.2s infinite' }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#9e8074', animation: 'bankDot 1.2s infinite 0.2s' }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#9e8074', animation: 'bankDot 1.2s infinite 0.4s' }} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const BANK_SCROLL_MSGS = [
+  { from: 'user', text: '王总这周六生日，帮我想想怎么维护一下，他最近持仓好像也有点问题' },
+  { from: 'ai',   text: '✅ 已查询王总档案：\n• 生日：本周六（3天后）\n• 资产规模：¥1,280万，钻石客户\n• 近期持仓：沪深300 ETF -6.2%，债基+1.1%\n\n📊 当前关注点：\n权益仓位集中度偏高（72%），近30日浮亏约¥74,000，情绪指数偏低。\n\n💡 建议动作：\n① 生日前1天发送专属祝福短信\n② 预约周五下午电话，聊仓位优化\n③ 准备固收+配置报告随信附上\n\n是否立即生成祝福短信和配置报告？' },
+  { from: 'user', text: '好，生成祝福短信，报告帮我重点突出固收+方向' },
+  { from: 'ai',   text: '✅ 祝福短信已生成（140字，符合合规要求）\n✅ 固收+配置报告已生成：\n  • 固收+ A（近1年+8.3%，波动率低）\n  • 偏债混合型基金组合\n\n📤 是否立即发送短信至王总手机？' },
+  { from: 'user', text: '发吧，他上次说对黄金有兴趣，要不要也加一块' },
+  { from: 'ai',   text: '📊 黄金配置分析：\n当前现货金价 ¥618/克，近3月+4.2%\n\n💡 建议配置比例：5-8%（对冲通胀+尾部风险）\n工具选择：黄金ETF（T+0流动性好）\n\n✅ 黄金章节已插入报告第4页，是否一并发给王总？' },
+  { from: 'user', text: '好的，一起发。他还有个朋友陈总，做生意的，可以介绍过来吗' },
+  { from: 'ai',   text: '✅ 已为王总生成专属转介绍卡片（含二维码）\n\n📋 陈总画像预填：\n• 行业：制造业  预估资产：300-500万\n• 潜在需求：企业流动资金 + 个人财富配置\n\n是否为陈总预建初始档案，提前准备见面方案？' },
+  { from: 'user', text: '先建档案，下周约好了见面' },
+  { from: 'ai',   text: '✅ 陈总初始档案已创建\n📅 已标注：下周三下午2点，陈总初次见面\n\n📝 见面前准备清单：\n□ 打印产品对比一页纸\n□ 准备企业流动资金方案\n□ 确认陈总风险偏好问卷\n\n⏰ 见面前1天自动提醒并推送当日简报。' },
+  { from: 'user', text: '王总短信有没有回应' },
+  { from: 'ai',   text: '📤 短信已于14:32发出，状态：已送达\n\n💬 王总已回复（14:47）：\n"谢谢小李，改天聊！"\n\n✅ 已记录至CRM\n📅 建议周四10点致电跟进\n\n是否现在预约提醒？' },
+  { from: 'user', text: '预约周四10点' },
+  { from: 'ai',   text: '✅ 已设置提醒：周四10:00 致电王总\n\n📋 通话前简报（届时自动推送）：\n• 持仓最新净值\n• 固收+产品最新排名\n• 本周市场热点摘要\n\n本周王总跟进任务全部完成 ✨' },
+];
+
+function BankScrollChat() {
+  const [visibleCount, setVisibleCount] = useState(1);
+  const [isTyping, setIsTyping] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (visibleCount >= BANK_SCROLL_MSGS.length) return;
+    const msg = BANK_SCROLL_MSGS[visibleCount];
+    const typingDelay = msg.from === 'ai' ? 1400 : 800;
+    const readDelay = msg.from === 'ai' ? 2200 : 1200;
+    const t1 = setTimeout(() => setIsTyping(true), readDelay);
+    const t2 = setTimeout(() => {
+      setIsTyping(false);
+      setVisibleCount(v => v + 1);
+    }, readDelay + typingDelay);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [visibleCount]);
+
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }, [visibleCount, isTyping]);
+
+  return (
+    <div className="bank-chat-card">
+      <div className="bank-chat-header">
+        <div className="bank-chat-avatar" style={{ background: 'rgba(230,92,70,0.1)', fontSize: 20 }}>💎</div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#2A1F19' }}>高净值客户维护助理</div>
+          <div style={{ fontSize: 12, color: '#9e8074' }}>客户生日 / 资产预警 / 关怀触达</div>
+        </div>
+        <div style={{ marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />
+      </div>
+      <div className="bank-chat-body" ref={bodyRef} style={{ overflowY: 'auto', maxHeight: 420 }}>
+        {BANK_SCROLL_MSGS.slice(0, visibleCount).map((msg, i) => (
+          <div key={i} className={`bank-msg ${msg.from}`} style={{ animation: 'bankMsgIn 0.3s ease' }}>
+            <div className="bank-msg-avatar" style={msg.from === 'user' ? { background: '#E65C46', color: 'white' } : { background: '#F8F2ED' }}>
+              {msg.from === 'user' ? '经' : '🤖'}
+            </div>
+            <div className="bank-msg-bubble" style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
+          </div>
+        ))}
+        {isTyping && (
+          <div className="bank-msg ai">
+            <div className="bank-msg-avatar" style={{ background: '#F8F2ED' }}>🤖</div>
+            <div className="bank-msg-bubble" style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '10px 16px' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#9e8074', animation: 'bankDot 1.2s infinite' }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#9e8074', animation: 'bankDot 1.2s infinite 0.2s' }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#9e8074', animation: 'bankDot 1.2s infinite 0.4s' }} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ListingCard({ listing, onDemo, large }: { listing: Listing; onDemo?: (listing: Listing, avatarUrl: string) => void; large?: boolean }) {
   const hasDemo = !!(listing.demo_personas?.length || listing.demo_messages?.length);
   const avatarUrl = listing.category === 'AI 角色'
@@ -182,7 +328,7 @@ function SkeletonGrid({ count = 6 }: { count?: number }) {
 }
 
 // ─── Onboarding chat types ─────────────────────────────────────────────────
-type OnboardingStep = 'industry' | 'name' | 'functions' | 'hasAccount' | 'register' | 'login' | 'manage' | 'newListing' | 'viewListings';
+type OnboardingStep = 'industry' | 'name' | 'functions' | 'hasAccount' | 'register' | 'login' | 'manage' | 'newListing' | 'viewListings' | 'viewBookings';
 interface OnboardingState { industry: string; name: string; functions: string[]; }
 interface ChatMsg { from: 'ai' | 'user'; text: string; image?: string; audio?: string; }
 
@@ -253,10 +399,14 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
   const [authLoading, setAuthLoading]     = useState(false);
 
   // listing management
-  const [myListings, setMyListings]         = useState<Listing[]>([]);
+  const [myProducts, setMyProducts]         = useState<StoreProduct[]>([]);
+  const [myBookings, setMyBookings]         = useState<StoreBooking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [editingStockId, setEditingStockId] = useState<number | null>(null);
+  const [editingStockVal, setEditingStockVal] = useState('');
   const [listingsLoading, setListingsLoading] = useState(false);
   const [nlName, setNlName]                 = useState('');
-  const [nlCategory, setNlCategory]         = useState('营销');
+  const [nlCategory, setNlCategory]         = useState('');
   const [nlPrice, setNlPrice]               = useState('0');
   const [nlDesc, setNlDesc]                 = useState('');
   const [nlSubmitting, setNlSubmitting]     = useState(false);
@@ -373,12 +523,12 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
 
   useEffect(() => { scrollBottom(); }, [msgs, typing, scrollBottom]);
 
-  // fetch listings when entering viewListings
+  // fetch store products when entering viewListings
   useEffect(() => {
     if (step === 'viewListings' && token) {
       setListingsLoading(true);
-      listingsApi.getMyListings(token)
-        .then(res => setMyListings(res?.data || []))
+      storeApi.getMyProducts(token)
+        .then(res => setMyProducts(res?.data || []))
         .catch(() => {})
         .finally(() => setListingsLoading(false));
     }
@@ -472,14 +622,15 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
     if (!nlName.trim() || !token) return;
     setNlSubmitting(true); setNlError('');
     try {
-      await listingsApi.createListing({
-        name: nlName.trim(), category: nlCategory,
+      await storeApi.createProduct({
+        name: nlName.trim(),
         price: parseFloat(nlPrice) || 0,
+        unit: nlCategory.trim() || undefined,
         description: nlDesc.trim() || undefined,
-        status: 'available',
+        is_active: true,
       }, token);
       const created = nlName.trim();
-      setNlName(''); setNlCategory('营销'); setNlPrice('0'); setNlDesc('');
+      setNlName(''); setNlCategory(''); setNlPrice('0'); setNlDesc('');
       setMsgs(prev => [...prev, { from: 'user', text: `上架：${created}` }]);
       setStep('manage');
       pushAI(`✅ 「${created}」已成功上架！\n\n还想做什么？`);
@@ -487,17 +638,116 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
     finally { setNlSubmitting(false); }
   };
 
-  const handleDeleteListing = async (listing: Listing) => {
+  const handleDeleteProduct = async (product: StoreProduct) => {
     if (!token) return;
     try {
-      await listingsApi.deleteListing(listing.id, token);
-      setMyListings(prev => prev.filter(l => l.id !== listing.id));
-      setMsgs(prev => [...prev, { from: 'ai', text: `🗑️ 已删除「${listing.name}」` }]);
+      await storeApi.deleteProduct(product.id, token);
+      setMyProducts(prev => prev.filter(p => p.id !== product.id));
+      setMsgs(prev => [...prev, { from: 'ai', text: `🗑️ 已删除「${product.name}」` }]);
       scrollBottom();
     } catch {}
   };
 
+  const handleUpdateStock = async (productId: number, stockVal: string) => {
+    if (!token) return;
+    const stock = parseInt(stockVal);
+    if (isNaN(stock) || stock < 0) { setEditingStockId(null); return; }
+    try {
+      await storeApi.updateProduct(productId, { stock }, token);
+      setMyProducts(prev => prev.map(p => p.id === productId ? { ...p, stock } : p));
+    } catch {}
+    setEditingStockId(null);
+  };
+
   const backToManage = () => { setStep('manage'); pushAI("好的，还有什么可以帮您？"); };
+
+  // ── smart fill: 语音/图片/文字 → AI 识别 → 自动填入表单 ─────────────────
+  const handleSmartFill = async (hint: string, imageBase64: string | null, _file: null) => {
+    setTyping(true);
+    setWaitingUser(false);
+    try {
+      const messages: { role: 'user'; content: string }[] = [];
+      if (imageBase64) {
+        messages.push({
+          role: 'user',
+          content: `请从这张商品图片中识别商品信息${hint ? `，补充说明：${hint}` : ''}。返回 JSON：{"name":"商品名称","unit":"单位如斤盒个","price":0,"description":"简短描述"}，只返回JSON不要其他文字。图片base64：${imageBase64.slice(0, 200)}…（已截断）`,
+        });
+      } else {
+        messages.push({
+          role: 'user',
+          content: `从以下描述中提取商品上架信息：「${hint}」\n返回 JSON：{"name":"商品名称","unit":"单位如斤盒个","price":数字,"description":"简短描述"}，只返回JSON不要其他文字。如果价格不明确填0。`,
+        });
+      }
+
+      const res = await fetch('/api/store-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: '__smart_fill__', messages }),
+      });
+
+      if (!res.ok || !res.body) throw new Error('API error');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let raw = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.trim()) continue;
+          try { raw += (JSON.parse(line).text || ''); } catch { /* skip */ }
+        }
+      }
+
+      // 提取 JSON
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.name) setNlName(parsed.name);
+        if (parsed.unit) setNlCategory(parsed.unit);
+        if (parsed.price != null) setNlPrice(String(parsed.price));
+        if (parsed.description) setNlDesc(parsed.description);
+        setTyping(false);
+        setWaitingUser(true);
+        setMsgs(prev => [...prev, { from: 'ai', text: `✅ 已识别并填入表单，请确认后点击「确认上架」` }]);
+        scrollBottom();
+      } else {
+        throw new Error('parse failed');
+      }
+    } catch {
+      setTyping(false);
+      setWaitingUser(true);
+      setMsgs(prev => [...prev, { from: 'ai', text: '识别失败，请手动填写表单 🙏' }]);
+      scrollBottom();
+    }
+  };
+
+  const handleViewBookings = () => {
+    setMsgs(prev => [...prev, { from: 'user', text: '📅 预定和订单' }]);
+    setWaitingUser(false);
+    setStep('viewBookings');
+    setBookingsLoading(true);
+    storeApi.getMyBookings(token!)
+      .then(res => setMyBookings(res?.data || []))
+      .catch(() => {})
+      .finally(() => { setBookingsLoading(false); setWaitingUser(true); scrollBottom(); });
+    pushAI("正在加载预定和订单…", 300);
+  };
+
+  const handleBookingStatus = async (id: number, status: 'confirmed' | 'cancelled' | 'completed') => {
+    if (!token) return;
+    try {
+      await storeApi.updateBookingStatus(id, status, token);
+      setMyBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+      const label = status === 'confirmed' ? '已确认' : status === 'cancelled' ? '已取消' : '已完成';
+      setMsgs(prev => [...prev, { from: 'ai', text: `✅ 订单 #${id} 状态已更新为「${label}」` }]);
+      scrollBottom();
+    } catch {
+      setMsgs(prev => [...prev, { from: 'ai', text: '❌ 操作失败，请稍后重试' }]);
+      scrollBottom();
+    }
+  };
 
   // ── universal text input handler ───────────────────────────────────────────
   const handleChatInput = (e: React.FormEvent) => {
@@ -515,14 +765,22 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
     // if audio
     if (aud) {
       setMsgs(prev => [...prev, { from: 'user', text: text || '🎤 语音消息', audio: aud.url }]);
-      pushAI("✅ 已收到您的语音消息，正在处理…", 800);
+      if (step === 'newListing') {
+        handleSmartFill(text || '', null, null);
+      } else {
+        pushAI("✅ 已收到您的语音消息，正在处理…", 800);
+      }
       return;
     }
 
     // if image
     if (img) {
       setMsgs(prev => [...prev, { from: 'user', text, image: img }]);
-      pushAI("✅ 已收到您发送的图片，我来查看一下…", 800);
+      if (step === 'newListing') {
+        handleSmartFill(text || '', img, null);
+      } else {
+        pushAI("✅ 已收到您发送的图片，我来查看一下…", 800);
+      }
       return;
     }
 
@@ -531,12 +789,23 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
       const icon = fileTypeIcon(fil.type);
       const sizeStr = fil.size > 1024 * 1024 ? `${(fil.size / 1024 / 1024).toFixed(1)}MB` : `${(fil.size / 1024).toFixed(0)}KB`;
       setMsgs(prev => [...prev, { from: 'user', text: `${icon} ${fil.name}（${sizeStr}）` }]);
-      pushAI(`✅ 已收到文件「${fil.name}」，我来查看一下…`, 800);
+      if (step === 'newListing') {
+        handleSmartFill(fil.name, null, null);
+      } else {
+        pushAI(`✅ 已收到文件「${fil.name}」，我来查看一下…`, 800);
+      }
       return;
     }
 
     const t = text;
     const tl = t.toLowerCase();
+
+    // plain text in newListing step → smart fill
+    if (step === 'newListing' && t) {
+      setMsgs(prev => [...prev, { from: 'user', text: t }]);
+      handleSmartFill(t, null, null);
+      return;
+    }
 
     if (step === 'industry') {
       // Try to match an industry option
@@ -583,7 +852,7 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
       } else if (/激活|卖家|开店/.test(tl)) {
         handleBecomeSeller();
       } else {
-        pushAI(`您好！我理解您的意思 😊\n\n我目前可以帮您：\n📦 上架新商品\n📋 查看我的商品\n📊 经营报表\n💡 使用说明\n\n请问您想做哪个？`);
+        pushAI(`您好！我理解您的意思 😊\n\n我目前可以帮您：\n📦 上架新商品\n📋 商品及库存\n📊 经营报表\n💡 使用说明\n\n请问您想做哪个？`);
       }
     }
   };
@@ -614,7 +883,7 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
     pushSequence([
       "好的！让我来介绍一下怎么用这个对话框管理您的店铺 👇",
       "📦 上架商品\n点「上架新商品」，填写名称、分类、价格（0 = 免费）和描述，一键搞定！\n\n价格设为 0 代表免费获取，适合引流。",
-      "📋 管理商品\n点「我的商品」可以查看所有已上架的商品，随时删除不需要的。\n\n今后还会支持直接在这里编辑商品内容。",
+      "📋 管理商品\n点「商品及库存」可以查看所有已上架的商品，随时删除不需要的。\n\n今后还会支持直接在这里编辑商品内容。",
       "📊 经营报表\n点「经营报表」可以看到商品数量、状态分布、免费/付费比例等数据，帮助您了解店铺现状。",
       "💬 小贴士\n\n✅ 所有操作都在这个对话框里完成，无需跳转页面\n✅ 随时点「←返回」可以回到主菜单\n✅ 遇到问题直接告诉我，我来帮您解决 🦞\n\n还有什么想了解的？",
     ]);
@@ -626,20 +895,16 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
     if (!token) { pushAI("请先登录后再查看报表。"); return; }
     setTyping(true);
     try {
-      const res = await listingsApi.getMyListings(token);
+      const res = await storeApi.getMyProducts(token);
       const all = res?.data || [];
-      const active = all.filter(l => l.status === 'available').length;
-      const draft  = all.filter(l => l.status === 'draft').length;
-      const free   = all.filter(l => parseFloat(l.price) === 0).length;
+      const active = all.filter(p => p.is_active).length;
+      const inactive = all.length - active;
+      const free   = all.filter(p => parseFloat(p.price) === 0).length;
       const paid   = all.length - free;
-      const cats: Record<string, number> = {};
-      all.forEach(l => { cats[l.category] = (cats[l.category] || 0) + 1; });
-      const catLines = Object.entries(cats).map(([k, v]) => `  · ${k}：${v} 个`).join('\n') || '  · 暂无分类数据';
       const report = [
         `📊 您的店铺经营报表`,
-        `商品总数：${all.length} 个\n✅ 上架中：${active} 个\n📝 草稿：${draft} 个`,
+        `商品总数：${all.length} 个\n✅ 上架中：${active} 个\n⏸️ 已下架：${inactive} 个`,
         `💰 付费商品：${paid} 个\n🆓 免费商品：${free} 个`,
-        `按分类分布：\n${catLines}`,
         all.length === 0
           ? "您还没有上架任何商品，点「上架新商品」开始吧！🚀"
           : `数据已更新 ✨\n\n还想做什么？`,
@@ -822,7 +1087,7 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
 
           {/* ── manage: main menu ─────────────────────────────────────────── */}
           {waitingUser && !typing && step === 'manage' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {!user?.is_seller ? (
                 <>
                   <p style={{ margin: '0 0 4px', fontSize: 13, color: '#9e8074', fontFamily: "'Manrope', sans-serif" }}>
@@ -831,14 +1096,14 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
                   <button onClick={handleBecomeSeller} disabled={sellerLoading} style={btnPrimary(sellerLoading)}>
                     {sellerLoading ? '激活中…' : '🔓 激活卖家权限（免费）'}
                   </button>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button onClick={handleReport}
-                      style={{ ...optBtn({ flex: 1 }) }}
+                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
                     >📊 经营报表</button>
                     <button onClick={handleHelp}
-                      style={{ ...optBtn({ flex: 1 }) }}
+                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
                     >💡 使用说明</button>
@@ -846,29 +1111,34 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
                 </>
               ) : (
                 <>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
                     <button onClick={() => { setMsgs(prev => [...prev, { from: 'user', text: '📦 上架新商品' }]); setStep('newListing'); setTyping(true); setTimeout(() => { setTyping(false); setMsgs(prev => [...prev, { from: 'ai', text: '好的！请填写商品信息 👇' }]); setWaitingUser(true); scrollBottom(); }, 400); }}
-                      style={{ ...optBtn({ flex: 1 }) }}
+                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
                     >📦 上架新商品</button>
-                    <button onClick={() => { setMsgs(prev => [...prev, { from: 'user', text: '📋 我的商品' }]); setStep('viewListings'); setTyping(true); setTimeout(() => { setTyping(false); setMsgs(prev => [...prev, { from: 'ai', text: '正在加载您的商品列表…' }]); scrollBottom(); }, 300); }}
-                      style={{ ...optBtn({ flex: 1 }) }}
+                    <button onClick={() => { setMsgs(prev => [...prev, { from: 'user', text: '📋 商品及库存' }]); setStep('viewListings'); setTyping(true); setTimeout(() => { setTyping(false); setMsgs(prev => [...prev, { from: 'ai', text: '正在加载您的商品列表…' }]); scrollBottom(); }, 300); }}
+                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
-                    >📋 我的商品</button>
+                    >📋 商品及库存</button>
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
                     <button onClick={handleReport}
-                      style={{ ...optBtn({ flex: 1 }) }}
+                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
                     >📊 经营报表</button>
                     <button onClick={handleHelp}
-                      style={{ ...optBtn({ flex: 1 }) }}
+                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
                     >💡 使用说明</button>
+                    <button onClick={handleViewBookings}
+                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
+                    >📅 预定和订单</button>
                   </div>
                 </>
               )}
@@ -877,21 +1147,27 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
 
           {/* ── new listing form ──────────────────────────────────────────── */}
           {waitingUser && !typing && step === 'newListing' && (
-            <form onSubmit={handleCreateListing} style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              <input autoFocus value={nlName} onChange={e => setNlName(e.target.value)} placeholder="商品名称" style={inputStyle} required />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <select value={nlCategory} onChange={e => setNlCategory(e.target.value)} style={{ ...inputStyle, flex: 1, cursor: 'pointer' }}>
-                  {LISTING_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+            <form onSubmit={handleCreateListing} style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {/* 智能录入提示 */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', background: 'rgba(230,92,70,0.06)', borderRadius: 9, border: '1px solid rgba(230,92,70,0.18)' }}>
+                <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }}>✨</span>
+                <p style={{ margin: 0, fontSize: 12, color: '#6B5549', fontFamily: "'Manrope', sans-serif", lineHeight: 1.5 }}>
+                  也可以用下方输入栏：<strong>🎤 语音描述</strong>、<strong>📷 拍照</strong> 或 <strong>📎 发送附件</strong>，AI 自动识别并填入表单
+                </p>
+              </div>
+              <input autoFocus value={nlName} onChange={e => setNlName(e.target.value)} placeholder="商品名称" style={{ ...inputStyle, padding: '7px 10px', fontSize: 13 }} required />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input value={nlCategory} onChange={e => setNlCategory(e.target.value)} placeholder="单位（如：斤、盒、个）"
+                  style={{ ...inputStyle, flex: 1, padding: '7px 10px', fontSize: 13 }} />
                 <input type="number" value={nlPrice} onChange={e => setNlPrice(e.target.value)} placeholder="价格" min="0" step="0.01"
-                  style={{ ...inputStyle, width: 90, flexShrink: 0 }} />
+                  style={{ ...inputStyle, width: 80, flexShrink: 0, padding: '7px 10px', fontSize: 13 }} />
               </div>
               <textarea value={nlDesc} onChange={e => setNlDesc(e.target.value)} placeholder="商品描述（可选）"
-                rows={2} style={{ ...inputStyle, resize: 'none' as const }} />
-              {nlError && <p style={{ margin: 0, fontSize: 12, color: '#D32F2F', fontFamily: "'Manrope', sans-serif" }}>{nlError}</p>}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" onClick={backToManage} style={{ ...optBtn({ width: 'auto', padding: '10px 14px', flexShrink: 0 }) }}>← 返回</button>
-                <button type="submit" disabled={nlSubmitting || !nlName.trim()} style={{ ...btnPrimary(nlSubmitting || !nlName.trim()), flex: 1 }}>
+                rows={2} style={{ ...inputStyle, resize: 'none' as const, padding: '7px 10px', fontSize: 13 }} />
+              {nlError && <p style={{ margin: 0, fontSize: 11, color: '#D32F2F', fontFamily: "'Manrope', sans-serif" }}>{nlError}</p>}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button type="button" onClick={backToManage} style={{ ...optBtn({ width: 'auto', padding: '7px 12px', fontSize: 12, flexShrink: 0 }) }}>← 返回</button>
+                <button type="submit" disabled={nlSubmitting || !nlName.trim()} style={{ ...btnPrimary(nlSubmitting || !nlName.trim()), flex: 1, padding: '7px 0', fontSize: 13 }}>
                   {nlSubmitting ? '上架中…' : '✅ 确认上架'}
                 </button>
               </div>
@@ -901,19 +1177,104 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
           {/* ── view listings ─────────────────────────────────────────────── */}
           {waitingUser && !typing && step === 'viewListings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+              {/* 标题栏 + 关闭按钮 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2, flexShrink: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#2A1F19', fontFamily: "'Manrope', sans-serif" }}>商品及库存</span>
+                <button onClick={backToManage} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9e8074', fontSize: 18, lineHeight: 1, padding: '0 2px', fontFamily: "'Manrope', sans-serif" }}>×</button>
+              </div>
               {listingsLoading ? (
                 <p style={{ margin: 0, fontSize: 14, color: '#9e8074', fontFamily: "'Manrope', sans-serif", textAlign: 'center', padding: '12px 0' }}>加载中…</p>
-              ) : myListings.length === 0 ? (
+              ) : myProducts.length === 0 ? (
                 <p style={{ margin: 0, fontSize: 14, color: '#9e8074', fontFamily: "'Manrope', sans-serif", textAlign: 'center', padding: '12px 0' }}>暂无商品，去上架第一个吧！</p>
-              ) : myListings.map(l => (
-                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#F8F2ED', borderRadius: 10, border: '1px solid rgba(42,31,25,0.1)' }}>
+              ) : myProducts.map(p => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#F8F2ED', borderRadius: 10, border: '1px solid rgba(42,31,25,0.1)' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1F19', fontFamily: "'Manrope', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</div>
-                    <div style={{ fontSize: 12, color: '#9e8074', fontFamily: "'Manrope', sans-serif', marginTop: 2" }}>
-                      {l.category} · {parseFloat(l.price) === 0 ? '免费' : `¥${l.price}`} · {l.status === 'available' ? '上架中' : l.status}
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#2A1F19', fontFamily: "'Manrope', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: '#9e8074', fontFamily: "'Manrope', sans-serif" }}>
+                        {p.unit ? `${p.unit} · ` : ''}{parseFloat(p.price) === 0 ? '免费' : `¥${p.price}`} · {p.is_active ? '上架中' : '已下架'}
+                      </span>
+                      {/* 库存可编辑 */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 12, color: '#9e8074', fontFamily: "'Manrope', sans-serif" }}>库存</span>
+                        {editingStockId === p.id ? (
+                          <input
+                            autoFocus
+                            type="number"
+                            min="0"
+                            value={editingStockVal}
+                            onChange={e => setEditingStockVal(e.target.value)}
+                            onBlur={() => handleUpdateStock(p.id, editingStockVal)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleUpdateStock(p.id, editingStockVal); if (e.key === 'Escape') setEditingStockId(null); }}
+                            style={{ width: 52, padding: '1px 5px', fontSize: 12, borderRadius: 5, border: '1.5px solid #E65C46', outline: 'none', fontFamily: "'Manrope', sans-serif", color: '#2A1F19' }}
+                          />
+                        ) : (
+                          <button
+                            onClick={() => { setEditingStockId(p.id); setEditingStockVal(String(p.stock ?? 0)); }}
+                            style={{ background: 'rgba(42,31,25,0.07)', border: 'none', borderRadius: 5, padding: '1px 7px', fontSize: 12, cursor: 'pointer', color: '#2A1F19', fontFamily: "'Manrope', sans-serif", fontWeight: 600 }}
+                          >{p.stock ?? '—'}</button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <button onClick={() => handleDeleteListing(l)} style={{ flexShrink: 0, background: 'none', border: '1px solid rgba(230,92,70,0.35)', color: '#E65C46', borderRadius: 7, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontFamily: "'Manrope', sans-serif", fontWeight: 600 }}>删除</button>
+                  <button onClick={() => handleDeleteProduct(p)} style={{ flexShrink: 0, background: 'none', border: '1px solid rgba(230,92,70,0.35)', color: '#E65C46', borderRadius: 7, padding: '4px 10px', fontSize: 12, cursor: 'pointer', fontFamily: "'Manrope', sans-serif", fontWeight: 600 }}>删除</button>
+                </div>
+              ))}
+              <button onClick={backToManage} style={{ ...optBtn({ marginTop: 2 }) }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
+              >← 返回</button>
+            </div>
+          )}
+
+          {/* ── view bookings ─────────────────────────────────────────────── */}
+          {waitingUser && !typing && step === 'viewBookings' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+              {bookingsLoading ? (
+                <p style={{ margin: 0, fontSize: 14, color: '#9e8074', fontFamily: "'Manrope', sans-serif", textAlign: 'center', padding: '12px 0' }}>加载中…</p>
+              ) : myBookings.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 14, color: '#9e8074', fontFamily: "'Manrope', sans-serif", textAlign: 'center', padding: '12px 0' }}>暂无预定和订单</p>
+              ) : myBookings.map(b => (
+                <div key={b.id} style={{ padding: '10px 12px', background: '#F8F2ED', borderRadius: 10, border: '1px solid rgba(42,31,25,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#2A1F19', fontFamily: "'Manrope', sans-serif" }}>
+                      {b.customer_name} · {b.customer_phone}
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, borderRadius: 6, padding: '2px 7px',
+                      fontFamily: "'Manrope', sans-serif",
+                      background: b.status === 'confirmed' ? 'rgba(34,197,94,0.12)' : b.status === 'cancelled' ? 'rgba(230,92,70,0.12)' : 'rgba(42,31,25,0.07)',
+                      color: b.status === 'confirmed' ? '#16a34a' : b.status === 'cancelled' ? '#E65C46' : '#6B5549',
+                    }}>
+                      {b.status === 'pending' ? '待确认' : b.status === 'confirmed' ? '已确认' : b.status === 'in_progress' ? '进行中' : b.status === 'completed' ? '已完成' : '已取消'}
+                    </span>
+                  </div>
+                  {b.booking_at && <div style={{ fontSize: 12, color: '#9e8074', fontFamily: "'Manrope', sans-serif" }}>🕐 {new Date(b.booking_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
+                  {b.items && b.items.length > 0 && <div style={{ fontSize: 12, color: '#9e8074', fontFamily: "'Manrope', sans-serif", marginTop: 2 }}>📦 {b.items.map(i => `${i.name}×${i.qty}`).join('、')}</div>}
+                  {b.customer_note && <div style={{ fontSize: 12, color: '#9e8074', fontFamily: "'Manrope', sans-serif", marginTop: 2 }}>💬 {b.customer_note}</div>}
+                  {/* 操作按钮：根据状态显示可用操作 */}
+                  {(b.status === 'pending' || b.status === 'confirmed' || b.status === 'in_progress') && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      {b.status === 'pending' && (
+                        <button
+                          onClick={() => handleBookingStatus(b.id, 'confirmed')}
+                          style={{ flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600, borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontFamily: "'Manrope', sans-serif" }}
+                        >✅ 确认</button>
+                      )}
+                      {b.status === 'confirmed' && (
+                        <button
+                          onClick={() => handleBookingStatus(b.id, 'completed')}
+                          style={{ flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600, borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontFamily: "'Manrope', sans-serif" }}
+                        >🏁 完成</button>
+                      )}
+                      {(b.status === 'pending' || b.status === 'confirmed') && (
+                        <button
+                          onClick={() => handleBookingStatus(b.id, 'cancelled')}
+                          style={{ flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600, borderRadius: 7, border: '1px solid rgba(230,92,70,0.4)', background: 'none', color: '#E65C46', cursor: 'pointer', fontFamily: "'Manrope', sans-serif" }}
+                        >✕ 取消</button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               <button onClick={backToManage} style={{ ...optBtn({ marginTop: 2 }) }}
@@ -1135,6 +1496,150 @@ function HomeContent() {
     playDemo(msgs);
   }, [playDemo]);
 
+  const openBankDemo = useCallback(() => {
+    const bankPersonas: DemoPersona[] = [
+      {
+        label: '经营报表分析',
+        messages: [
+          { type: 'user', text: '帮我出一份本月的业绩报表' },
+          { type: 'ai', text: '📊 本月业绩报表（截至今日）：\n\n💰 存款业务\n• 新增存款：¥4,380万\n• 到期续存率：87%（行内平均74%）\n• 大额存单销售：18笔，¥1,260万\n\n📈 理财业务\n• 新增AUM：¥2,340万\n• 基金销售：32笔，¥680万\n• 保险期缴：6件，¥28万/年\n\n👥 客户数据\n• 服务客户数：47人\n• 新增客户：6人\n• 客户满意度：98分\n\n🏆 综合排名：支行第2名\n\n是否生成可分享的图表版报表？' },
+          { type: 'user', text: '生成图表版，另外帮我分析一下哪类产品卖得最好' },
+          { type: 'ai', text: '📊 本月产品销售结构分析：\n\n🥇 大额存单（占比42%）\n→ 客户接受度最高，利率优势明显\n→ 建议：继续主推，重点攻克到期未续客户\n\n🥈 固收+基金（占比28%）\n→ 高净值客户配置首选\n→ 建议：搭配持仓诊断服务提升粘性\n\n🥉 货币基金（占比18%）\n→ 多为过渡性资金，转化空间大\n→ 建议：设置自动提醒，引导向定期迁移\n\n⚠️ 保险期缴（占比12%）\n→ 件数少但价值高，可加大推介力度\n\n💡 下月重点：把货币基金客户转化为大额存单，预计可提升AUM约¥300万。' },
+          { type: 'user', text: '我的客户里哪些人资产增长最快，帮我列一下' },
+          { type: 'ai', text: '📈 近3个月资产增长 TOP5 客户：\n\n① 陈总（+¥180万，+56%）\n→ 新开户，初始配置¥320万，快速追加\n→ 建议：升级为钻石客户，提供专属服务\n\n② 王总（+¥95万，+8%）\n→ 固收+收益兑现后复投\n→ 建议：推介私募/FOF产品，进一步提升AUM\n\n③ 何女士（+¥60万，+15%）\n→ 定期到期续存+新增资金\n→ 建议：引导家庭资产规划，邀请配偶面谈\n\n④ 刘总（+¥45万，+12%）\n→ 存款转理财，收益体验好\n\n⑤ 孙先生（+¥30万，+18%）\n→ 新客首次配置，满意度高\n\n✅ 以上5位均为本季度重点维护对象，已自动加入VIP跟进名单。' },
+          { type: 'user', text: '帮我看看下个月哪些客户有资金到期，提前规划一下' },
+          { type: 'ai', text: '📅 下月到期资金预警（5月）：\n\n🔴 金额较大（需提前2周联系）\n• 林总 — 结构性存款¥300万，5月8日到期\n• 赵总 — 大额存单¥200万，5月15日到期\n• 王总 — 定期理财¥150万，5月22日到期\n\n🟡 中等金额（提前1周联系）\n• 吴女士 — 定期存款¥80万，5月11日\n• 张先生 — 大额存单¥50万，5月19日\n\n💡 预估可挽留续存金额：¥780万+\n\n✅ 已自动创建提醒计划：\n每位客户到期前7天推送提醒+专属话术\n\n是否现在预生成5月到期客户的续存方案？' },
+          { type: 'user', text: '生成，另外帮我汇总一下今年以来的完整业绩' },
+          { type: 'ai', text: '📊 2026年度业绩汇总（1月—4月）：\n\n💰 存款累计新增：¥1.42亿\n• Q1：¥8,600万\n• Q2至今：¥5,600万\n\n📈 AUM净增：¥6,840万\n• 理财：¥3,200万\n• 基金：¥2,100万\n• 保险：¥1,540万\n\n👥 客户管理\n• 服务总人数：186人\n• 新增客户：24人\n• 流失客户：3人（流失率1.6%，行内最低）\n\n🏆 综合绩效得分：94.2分\n年度排名：支行第1名（升2位）\n预计全年完成率：113%\n\n✅ 完整版PDF报告已生成，可提交支行存档或分享给主管。' },
+        ],
+      },
+      {
+        label: '客户画像洞察',
+        messages: [
+          { type: 'user', text: '帮我分析一下我的客户群体，整体画像是什么样的' },
+          { type: 'ai', text: '👥 客户群体画像分析（共186人）：\n\n📌 年龄分布\n• 45-60岁：占比52%（主力人群，稳健型）\n• 35-44岁：占比28%（成长型，配置需求旺盛）\n• 60岁+：占比20%（保守型，大额存单为主）\n\n💰 资产分布\n• ¥300万以上（VIP）：18人，占总AUM的64%\n• ¥50-300万（中产）：87人，占总AUM的30%\n• ¥50万以下（基础）：81人，占总AUM的6%\n\n🎯 风险偏好\n• R1-R2保守型：41%\n• R3平衡型：38%\n• R4-R5积极型：21%\n\n💡 核心洞察：\nVIP客户贡献了64%的AUM，但仅占客户数的10%。建议重点维护这18位客户，ROI最高。' },
+          { type: 'user', text: '18位VIP客户里谁最容易流失，帮我排个风险' },
+          { type: 'ai', text: '⚠️ VIP客户流失风险评估：\n\n🔴 高风险（需立即行动）\n① 林总（¥560万）\n→ 持仓浮亏-8.4%，71天未主动联系，情绪低落\n\n② 周先生（¥320万）\n→ 曾咨询其他行产品，62天未接触，信号不明\n\n🟡 中风险（本周内联系）\n③ 赵总（¥480万）\n→ 上次通话提到"可能换个行看看"\n④ 吴女士（¥180万）\n→ 定期到期未处理，被动流失风险\n\n🟢 低风险（正常维护）\n⑤-⑱ 其余14位VIP客户状态稳定\n\n✅ 已为林总和周先生生成紧急挽留方案，建议今日处理。' },
+          { type: 'user', text: '好，再帮我看看哪些小客户有升级潜力' },
+          { type: 'ai', text: '🌱 潜力客户升级雷达（¥50万以下 → 中产/VIP）：\n\n🔥 高升级潜力（近期有信号）\n① 孙先生（现¥38万）\n→ 刚入职某科技公司高管，月收入大幅提升\n→ 建议：主动询问年终奖规划，切入配置对话\n\n② 李小姐（现¥22万）\n→ 刚卖掉郊区房，预计有¥150万待配置\n→ 建议：本周联系，准备稳健型首配方案\n\n③ 陈先生（现¥45万）\n→ 上次透露父母有养老金配置需求\n→ 建议：推介家庭资产管理，捆绑拓展\n\n💡 若以上3人全部升级，预计新增AUM约¥280万。\n\n✅ 3份专属升级方案已预生成，是否发送至您的工作台？' },
+          { type: 'user', text: '发送，另外帮我做一个下季度的目标规划' },
+          { type: 'ai', text: '🎯 Q3目标规划建议（7-9月）：\n\n📌 基于当前业绩趋势（月均增速+12%）\n\n存款目标：¥5,200万\n→ 拆解：现有到期续存¥3,800万 + 新增¥1,400万\n→ 关键动作：6月底提前锁定到期客户\n\nAUM目标：¥2,800万\n→ 拆解：潜力客户升级¥280万 + VIP加仓¥1,200万 + 新客¥1,320万\n→ 关键动作：国庆前完成高净值客户年度回顾\n\n新增客户：8人\n→ 来源：现有客户转介绍4人 + 行内沙龙活动4人\n\n🏆 完成后预计年度排名：支行第1名（保持）\n\n✅ 目标已拆解为每月里程碑，是否导入到您的工作计划？' },
+          { type: 'user', text: '导入，最后帮我生成一份给主管看的汇报材料' },
+          { type: 'ai', text: '📋 主管汇报材料已生成（PPT版 + 摘要版）：\n\n📌 一页摘要（口头汇报用）：\n"本月服务客户47人，新增AUM ¥2,340万，综合排名支行第2，客户满意度98分。下月重点围绕5月到期¥780万续存和3位潜力客户升级，预计完成率110%以上。"\n\n📊 PPT版（6页）包含：\n① 本月业绩亮点数据\n② 客户结构与健康度分析\n③ 重点客户跟进进展\n④ 风险预警与应对措施\n⑤ 下月目标与行动计划\n⑥ 需支行支持事项\n\n✅ 文件已生成，可直接发送给主管或在周会上使用。' },
+        ],
+      },
+      {
+        label: '高净值客户维护',
+        messages: [
+          { type: 'user', text: '王总这周六生日，帮我想想怎么维护一下，他最近持仓好像也有点问题' },
+          { type: 'ai', text: '✅ 已查询王总档案：\n• 生日：本周六（3天后）\n• 资产规模：¥1,280万，钻石客户\n• 近期持仓：沪深300 ETF -6.2%，债基+1.1%\n\n📊 当前关注点：\n权益仓位集中度偏高（72%），近30日浮亏约¥74,000，情绪指数偏低。\n\n💡 建议动作：\n① 生日前1天发送专属祝福短信（已起草，待确认）\n② 预约周五下午电话，重点聊仓位优化\n③ 准备固收+配置报告随信附上\n\n是否立即生成祝福短信和配置报告？' },
+          { type: 'user', text: '好，生成祝福短信，报告帮我重点突出固收+方向' },
+          { type: 'ai', text: '✅ 祝福短信已生成（140字，符合合规要求）\n✅ 固收+配置报告已生成，重点推荐：\n  • 固收+ A（近1年+8.3%，波动率低）\n  • 偏债混合型基金组合\n\n📤 是否立即发送短信至王总手机？' },
+          { type: 'user', text: '发吧，另外他上次说对黄金有兴趣，要不要也加一块' },
+          { type: 'ai', text: '📊 黄金配置分析：\n当前现货金价 ¥618/克，近3月+4.2%\n\n💡 建议将黄金纳入报告附页：\n• 配置比例建议：5-8%（对冲通胀 + 尾部风险）\n• 工具选择：黄金ETF（T+0流动性好）\n• 不建议实物金，流动性差\n\n✅ 已更新报告，黄金章节已插入第4页。\n是否一并发给王总？' },
+          { type: 'user', text: '好的，一起发。他还有个朋友陈总，也是做生意的，可以介绍过来吗' },
+          { type: 'ai', text: '✅ 已为王总生成专属转介绍卡片（含二维码）\n\n📋 陈总画像预填（来自王总备注）：\n• 行业：制造业  规模：中型企业\n• 预估资产：300-500万\n• 潜在需求：企业流动资金管理 + 个人财富配置\n\n💡 建议话术：\n"陈总您好，我是XX行王先生的私人顾问……"\n\n是否为陈总预建初始档案，提前准备见面方案？' },
+          { type: 'user', text: '先建档案，下周约好了见面' },
+          { type: 'ai', text: '✅ 陈总初始档案已创建\n📅 已在日历标注：下周三下午2点，陈总初次见面\n\n📝 见面前准备清单（自动生成）：\n□ 打印产品对比一页纸\n□ 准备企业流动资金方案\n□ 了解制造业近期政策利好\n□ 确认陈总风险偏好问卷\n\n⏰ 见面前1天我会自动提醒您并推送当日简报。' },
+          { type: 'user', text: '王总那边短信发出去了吗，有没有回应' },
+          { type: 'ai', text: '📤 短信已于今天14:32发出，状态：已送达\n\n💬 王总已回复（14:47）：\n"谢谢小李，改天聊！"\n\n✅ 已记录本次互动至CRM\n📅 建议周四上午10点拨打跟进电话\n\n是否现在预约提醒？' },
+          { type: 'user', text: '预约提醒，周四10点' },
+          { type: 'ai', text: '✅ 已设置提醒：周四上午10:00 致电王总\n\n📋 通话前简报（届时自动推送）：\n• 持仓最新净值\n• 固收+产品最新排名\n• 本周市场热点摘要\n\n本周王总跟进任务全部完成 ✨\n今日还有3位客户生日临近，是否批量处理？' },
+        ],
+      },
+      {
+        label: '新客产品匹配',
+        messages: [
+          { type: 'user', text: '新客户李女士，45岁，500万资产，说想稳健一点，但也希望跑赢通胀，怎么给她推？' },
+          { type: 'ai', text: '✅ 已建立李女士临时档案\n• 年龄：45岁  资产：¥500万  风格：稳健型\n\n📊 KYC 智能评估：\n建议风险等级定为 R2-R3（稳健偏积极）\n\n💡 推荐组合（合规通过）：\n① 50% — 国债逆回购 + 大额存单（保本打底）\n② 30% — 固收+混合基金（年化目标5-7%）\n③ 20% — 沪深红利低波ETF（跑赢通胀锚）\n\n是否生成完整产品说明书和面谈话术？' },
+          { type: 'user', text: '生成话术，另外她问过理财亏损怎么解释' },
+          { type: 'ai', text: '✅ 完整面谈话术已生成（含开场白、产品介绍、异议处理）\n\n📌 关于"理财亏损"的合规应对话术：\n"市场短期波动在所难免，我们选择的产品历史最大回撤控制在5%以内，长期持有3年以上胜率达92%……"\n（已附3个真实案例数据支撑）\n\n⚠️ 合规提示：请勿承诺保本或固定收益。' },
+          { type: 'user', text: '她还在纠结要不要把房子卖了全投进来，我怎么建议她' },
+          { type: 'ai', text: '⚠️ 重要提示：切勿建议客户变卖主要资产全仓投入。\n\n💡 合规建议话术：\n"李女士，我们一般建议用可投资金融资产的比例来配置，您的房产是家庭主要资产，流动性和居住功能不建议轻易变现。我们可以先从您现有的流动资金开始规划……"\n\n✅ 本建议已通过合规审核，可直接引用。' },
+          { type: 'user', text: '好的，她问第一笔可以先投多少，最低门槛是多少' },
+          { type: 'ai', text: '📋 各产品最低申购门槛：\n• 国债逆回购：¥10万起\n• 大额存单：¥20万起（3年期，4.1%）\n• 固收+基金：¥1,000起\n• 红利ETF：¥1,000起\n\n💡 建议首次配置方案（¥100万起步）：\n① ¥50万 — 大额存单（安全底仓）\n② ¥30万 — 固收+基金\n③ ¥20万 — 红利ETF\n\n这样风险分散，体验感好，后续容易加仓。' },
+          { type: 'user', text: '她同意了，要开始办手续，怎么走流程' },
+          { type: 'ai', text: '✅ 已为李女士生成开户流程指引：\n\n第一步：风险承受能力测评（柜台或App，约5分钟）\n第二步：签署产品认购协议（合规必备）\n第三步：资金划转，建议分3笔在3天内转入\n\n📎 所需材料：\n• 身份证原件\n• 银行卡（本行）\n• 手机号码\n\n⏱ 预计全流程约45分钟。\n是否预约今天下午3点办理？' },
+          { type: 'user', text: '预约3点，另外帮我记一下，她老公也想了解，下次带老公一起来' },
+          { type: 'ai', text: '✅ 已预约：今天下午3:00 李女士开户办理\n✅ CRM已备注：下次拜访须邀请其配偶同席\n\n📝 已为李女士配偶预建联系人档案（待完善）\n💡 下次见面可同步推介家庭资产配置方案，转化概率更高。\n\n今天15:00前我会提醒您准备相关材料 📂' },
+          { type: 'user', text: '太好了，今天还有几个客户要跟进，帮我排个优先级' },
+          { type: 'ai', text: '📊 今日待跟进客户优先级排序：\n\n🔴 高优先（今日必联）\n① 张先生 — 定期存款明天到期，需续期或转投\n② 刘总 — 上周承诺的产品方案今天要给回复\n\n🟡 中优先（本周跟进）\n③ 赵女士 — 3个月前沟通过，近期有购房需求变化\n④ 孙先生 — 风险测评快到期，需重新评估\n\n🟢 常规维护\n⑤ 其余6位客户 — 本月例行问候即可\n\n是否现在生成今日跟进话术清单？' },
+        ],
+      },
+      {
+        label: '客户分级管理',
+        messages: [
+          { type: 'user', text: '帮我看看我手上哪些客户最近没联系了，有点担心流失' },
+          { type: 'ai', text: '📊 客户活跃度预警报告：\n\n🔴 高流失风险（超60天未联系）\n① 周先生 — ¥320万，上次接触：62天前，曾询价私募产品\n② 吴女士 — ¥180万，上次接触：71天前，定期到期未续\n\n🟡 中风险（30-60天未联系）\n③ 林总 — ¥560万，持仓浮亏中，情绪敏感期\n\n💡 建议今日优先联系周先生和吴女士。\n是否为他们各生成一条唤醒话术？' },
+          { type: 'user', text: '生成，重点是吴女士，她定期到期了' },
+          { type: 'ai', text: '✅ 吴女士唤醒话术已生成：\n\n"吴女士您好，我是小李，注意到您上次的定期存款本月已到期，这次到账的资金有没有考虑好怎么安排？最近有一款3年期利率4.1%的大额存单，额度有限，想第一时间告诉您……"\n\n📎 附带：产品对比一页纸（大额存单 vs 货币基金）\n📅 建议今天上午10-11点拨打，接听率最高。' },
+          { type: 'user', text: '好，发完吴女士，周先生那边是什么情况，他问过私募' },
+          { type: 'ai', text: '📋 周先生档案摘要：\n• 资产：¥320万  风险等级：R4（积极型）\n• 上次需求：咨询私募股权类产品\n• 近期状态：无新动作，但浏览过2次理财页面\n\n💡 跟进建议：\n可主动推介近期募集中的FOF产品（R4合规），门槛50万，锁定1年。\n\n✅ 周先生话术已生成，主打"专属优先认购通道"角度切入。\n是否同步生成预约见面的短信？' },
+          { type: 'user', text: '同步生成，另外帮我统计一下这个月我一共服务了多少客户' },
+          { type: 'ai', text: '📊 本月服务数据摘要（截至今日）：\n\n• 累计跟进客户：47人\n• 新增意向客户：6人（转化率12.8%）\n• 成交客户：11人，累计AUM新增 ¥2,340万\n• 到期提醒处理：9笔（完成率100%）\n• 平均响应时长：23分钟\n\n🏆 本月排名：支行第2名（上月第4名）\n继续加油，距第1名差距：¥430万 AUM' },
+          { type: 'user', text: '不错，林总那边持仓亏损，我怎么安抚他' },
+          { type: 'ai', text: '📋 林总持仓现状：\n• 沪深300指数基金：-8.4%，浮亏约¥47万\n• 持有时间：11个月\n\n💡 安抚 + 挽留策略：\n① 不要主动提亏损数字，等他问\n② 引导关注长期数据："同类产品3年正收益概率84%"\n③ 提供"持仓诊断报告"作为服务体验，而非推销\n\n✅ 已生成《林总专属持仓诊断报告》（5页PDF）\n建议面谈送达，加强信任感。是否预约本周见面？' },
+          { type: 'user', text: '预约周三下午，另外帮我把今天所有客户动作都记到日报里' },
+          { type: 'ai', text: '✅ 今日工作日报已生成：\n\n📋 2026-04-27 客户经理日报\n• 联系客户：5人（吴女士、周先生、林总等）\n• 发送短信/话术：3条\n• 新建档案：1人（陈总）\n• 预约跟进：2人（林总周三、周先生周四）\n• 异常预警处理：2人\n\n已同步至CRM系统，支行主管可查阅 ✅' },
+        ],
+      },
+      {
+        label: '存款到期提醒',
+        messages: [
+          { type: 'user', text: '今天有没有存款快到期的客户，提前提醒我一下' },
+          { type: 'ai', text: '📅 未来7天到期存款提醒：\n\n🔴 明日到期\n• 张先生 — 定期¥50万（1年期，利率3.5%）\n  建议：续存或转大额存单（+0.6%利差）\n\n🟡 3天内到期\n• 何女士 — 大额存单¥100万（3年期）\n  建议：趁现在锁定新一期，利率下行趋势明显\n\n🟢 本周内到期\n• 赵总 — 结构性存款¥200万\n  建议：到期前提前沟通，避免自动转活期\n\n是否现在为以上3位生成到期提醒短信？' },
+          { type: 'user', text: '张先生那个先发，他之前说可能要取出来用' },
+          { type: 'ai', text: '📋 张先生最新备注：\n"可能近期有资金需求，到期后再定"（3个月前记录）\n\n⚠️ 流失预警：取现概率中等偏高\n\n💡 挽留策略：\n不要直接推产品，先了解资金用途：\n- 若用于购房首付 → 推荐灵活申赎货基过渡\n- 若用于生意周转 → 推荐随存随取的活期理财\n- 若暂无明确用途 → 主推"灵活定期"，随时可取\n\n✅ 已生成分场景话术3套，已发至您的工作台。' },
+          { type: 'user', text: '好，先问问他情况。何女士的大额存单快到了，她能接受锁3年吗' },
+          { type: 'ai', text: '📋 何女士偏好分析：\n• 历史选择：上期主动选3年期（高利率优先）\n• 家庭状况备注：子女已独立，无近期大额支出\n• 风险等级：R1（保守型）\n\n📊 判断：接受锁3年概率高（约80%）\n\n💡 推荐话术：\n"何阿姨，您上次选3年期的眼光真好！现在利率在走下行通道，现在锁3年4.1%是最后窗口期，额度只剩少量了……"\n\n✅ 已生成完整话术和产品说明书。' },
+          { type: 'user', text: '很好，下午打给何女士。赵总的结构性存款，他一般怎么操作' },
+          { type: 'ai', text: '📋 赵总历史偏好：\n• 近3次到期：2次续存结构性存款，1次转权益基金\n• 偏好高预期收益，能接受部分浮动\n• 曾表达对股市有兴趣但"怕亏太多"\n\n💡 本次到期建议方案：\n① 70% — 续存结构性存款（稳定底仓）\n② 30% — 试水偏债混合基金（兼顾弹性）\n\n这个组合预期收益 > 纯续存，波动可控，符合赵总画像。\n\n✅ 方案PPT已自动生成，3页，适合5分钟讲完。' },
+          { type: 'user', text: '完美，帮我安排一下今天下午的打电话顺序' },
+          { type: 'ai', text: '📅 今天下午通话计划（已按优先级排序）：\n\n14:00 — 张先生（明日到期，先了解资金用途）\n14:30 — 何女士（锁3年大额存单，话术已就绪）\n15:00 — 赵总（结构性存款到期，推荐组合方案）\n15:30 — 预留：跟进上午有回复的客户\n\n⏰ 提醒已全部设置\n📎 每通电话前5分钟自动推送客户简报 + 当日话术\n\n祝谈单顺利 💪' },
+        ],
+      },
+      {
+        label: '异议处理话术',
+        messages: [
+          { type: 'user', text: '客户说"我再考虑考虑"，我怎么接' },
+          { type: 'ai', text: '💡 "再考虑"通常有3种真实含义，先判断哪种：\n\n① 真的需要时间 → 给空间，约好下次联系时间\n② 对产品不放心 → 提供数据或案例消除顾虑\n③ 婉拒但不好意思说 → 换产品或换方向重新沟通\n\n✅ 万能过渡话术：\n"好的，不急！我把几个核心数据整理成一页纸发给您，您有空看一眼，有问题随时找我。请问我后天给您打个电话确认一下，方便吗？"\n\n这样既不施压，又锁住了下次跟进机会。' },
+          { type: 'user', text: '他说利率太低了，觉得没意思' },
+          { type: 'ai', text: '💡 应对"利率太低"的话术框架：\n\n先认同，再引导：\n"您说的对，现在的利率确实比2年前低了不少，这是整个市场的趋势，其实现在锁定4.1%已经是市场里难得的高点了，很多客户上个月才明白过来……"\n\n可补充的数据支撑：\n• 余额宝当前年化约1.8%\n• 一般银行理财约3.2%\n• 本款大额存单4.1%，高出市场均值约28%\n\n✅ 已生成完整对比数据表，可直接在手机上给客户看。' },
+          { type: 'user', text: '他还说别的银行给的更高，我怎么办' },
+          { type: 'ai', text: '💡 应对"竞争对手报价更高"话术：\n\n第一步：不要慌，先确认对方报价的产品类型\n"您方便说一下是哪家的什么产品吗？"\n\n第二步：根据类型回应\n• 若是非保本理财 → "那个风险等级和我们这款不同，本金保障是不一样的"\n• 若是正规存款产品 → "如果真的比我们高，我帮您核实一下，看能不能申请利率上浮"\n\n第三步：转移焦点\n"其实利率只是一个角度，我们行的存款保险、服务响应、理财经理专属服务……综合价值才是关键。"\n\n✅ 已准备竞品对比卡，一张图说清差异。' },
+          { type: 'user', text: '好用！客户说"我钱都在股票里，没钱存"，怎么聊' },
+          { type: 'ai', text: '💡 应对"钱都在股市"的破局话术：\n\n不要急着推产品，先聊心态：\n"最近大盘波动挺大的，您持仓感觉怎么样？"\n\n根据他的回答分路走：\n🔴 如果他说"还行/赚了" → 聊利润锁定概念\n"赚到的钱其实可以分一部分出来放稳健的，留住利润比全押进去重要……"\n\n🟡 如果他说"套住了/亏了" → 聊分散风险\n"我有些客户就是把一部分放在固收这边，心里更踏实，等股市回来再看机会……"\n\n✅ 两套话术已生成，可根据现场反应直接切换使用。' },
+          { type: 'user', text: '再给我一个客户说"我老伴不同意"怎么处理' },
+          { type: 'ai', text: '💡 应对"家人不同意"的话术：\n\n✅ 策略1：邀请一起来\n"没关系，理财是家庭大事，全家人都清楚才放心。要不下次您把老伴也带来，我给你们一起讲讲？"\n\n✅ 策略2：提供带回家的材料\n"我把产品的核心说明做成一页纸，您拿回去给老伴看看，要是有疑问我可以电话解答。"\n\n✅ 策略3：小额先做\n"要不先做个小金额体验一下？就5万，风险低，老伴看到收益就容易接受了。"\n\n✅ 三套方案已生成，请根据客户性格选择。' },
+          { type: 'user', text: '还有一个客户电话一直不接怎么办' },
+          { type: 'ai', text: '💡 客户不接电话的唤醒策略：\n\n第一步：换渠道触达\n✅ 发一条轻松短信（已生成）：\n"XX先生您好，我是小李，最近有款产品特别适合您，不打扰您接电话，有空微信我一下就好 😊"\n\n第二步：选对时间\n📅 最佳拨打窗口：\n• 工作日：19:30-20:30（晚饭后）\n• 周末：10:00-11:00\n• 避开：周一早上、午休时间\n\n第三步：若3次未接，可用支行座机尝试一次。\n\n第四步：触发第三方\n若该客户由他人转介绍，可请介绍人帮忙"打个招呼"。\n\n✅ 唤醒短信已生成，是否现在发送？' },
+        ],
+      },
+      {
+        label: '节假日营销话术',
+        messages: [
+          { type: 'user', text: '五一快到了，帮我想想节日营销怎么做' },
+          { type: 'ai', text: '📅 五一节假日营销方案（4月28日—5月1日）：\n\n🎯 核心策略：节日情感 + 时间限定 + 专属服务\n\n📋 分三类客户差异化触达：\n\n① VIP/钻石客户（¥300万+）\n→ 手写祝福卡+专属配置礼包\n→ 话术重点：情感维系，不急推产品\n\n② 中等客户（¥50-300万）\n→ 节日专属理财产品短信\n→ 话术重点：限时优惠，制造紧迫感\n\n③ 低活跃客户\n→ 唤醒短信，重新建立联系\n→ 话术重点：轻松问候，降低压迫感\n\n是否现在按分类批量生成短信？' },
+          { type: 'user', text: '先生成VIP那档的，王总、林总、陈总三人' },
+          { type: 'ai', text: '✅ 已为3位VIP客户生成个性化节日短信：\n\n📩 王总版（钻石客户，含持仓关怀）：\n"王总五一快乐！这段时间市场波动，您的资产我一直在关注，节后有个配置机会想第一时间跟您分享，祝您和家人假期愉快！"\n\n📩 林总版（持仓浮亏，情感为主）：\n"林总节日快乐！市场短期有风浪，长期价值不变，我一直在，有任何想法随时找我。好好休息，节后聊！"\n\n📩 陈总版（新客待跟进）：\n"陈总五一假期快乐！上次聊得很开心，节后我把那份方案优化一下，约个时间细聊？"\n\n✅ 3条短信已进入发送队列，是否确认发出？' },
+          { type: 'user', text: '确认发送，节后第一天重点跟进哪些客户' },
+          { type: 'ai', text: '📅 节后第一天（5月6日）重点跟进清单：\n\n🔴 必打电话（3人）\n① 吴女士 — 定期5月5日到期，节后第一天是最佳续存窗口\n② 周先生 — 假期前表达过想了解私募，趁热打铁\n③ 张先生 — 上次约好节后回复，不能爽约\n\n🟡 发消息跟进（5人）\n• 节日期间有回复的客户，优先回应\n• 发过祝福未读的客户，电话确认收到\n\n💡 节后话术开场建议：\n"节过得怎么样？我假期整理了一份资料，有个适合您的机会想跟您说……"\n\n✅ 5月6日跟进日程已预排，届时自动提醒。' },
+          { type: 'user', text: '好，年底还有没有什么好时机做营销' },
+          { type: 'ai', text: '📅 全年营销黄金节点（剩余）：\n\n5月 — 母亲节（5/11）\n→ 适合推亲子/家庭配置方案\n\n6月 — 半年报、年中考核\n→ 银行冲存款旺季，利率上浮空间最大\n\n9月 — 开学季\n→ 教育金、定投话题切入\n\n10月 — 国庆+Q4开门红预热\n→ 高净值客户年度资产回顾约谈\n\n12月 — 年终奖预期\n→ "年终奖如何理财"是最高频客户提问\n\n✅ 已生成全年营销日历，可导出至您的日程系统。\n是否为每个节点预生成话术模板？' },
+          { type: 'user', text: '好的，年中冲存款那段帮我多准备一些话术' },
+          { type: 'ai', text: '💡 年中冲存款专项话术包（6月适用）：\n\n✅ 开场话术（老客户）：\n"XX先生，6月底前我们行有一批利率上浮的大额存单，这是年中最后机会，特意第一时间通知您……"\n\n✅ 加量话术（已有存款的客户）：\n"您现在这笔存款到期正好赶上，要不顺势多放一部分？利率比上次还高0.2%，这个时间节点真的难得。"\n\n✅ 拉新话术（介绍新客）：\n"您要是有朋友也有闲置资金，6月底前带来可以享受我们的优先服务通道，我帮您一起安排。"\n\n✅ 截止施压话术：\n"这批额度本周五截止，我今天先给您预留一个名额，您确认一下金额就好，不用马上到场。"\n\n已生成6月专项话术共12套，按场景分类，可随时调取 📂' },
+        ],
+      },
+    ];
+    setCurrentPersonas(bankPersonas);
+    setActivePersonaIdx(0);
+    setCurrentDemoName('银行客户经理 AI 助理');
+    setCurrentDemoAvatar('https://api.dicebear.com/9.x/open-peeps/svg?seed=bank-rm&size=48&backgroundColor=b6e3f4');
+    setShowDemo(true);
+    setCurrentDemoMsgs(bankPersonas[0].messages);
+    playDemo(bankPersonas[0].messages);
+  }, [playDemo]);
+
   const switchPersona = useCallback((idx: number, personas: DemoPersona[]) => {
     setActivePersonaIdx(idx);
     const msgs = personas[idx]?.messages ?? [];
@@ -1171,9 +1676,9 @@ function HomeContent() {
     if (sort === 'price_asc') return parseFloat(a.price) - parseFloat(b.price);
     if (sort === 'price_desc') return parseFloat(b.price) - parseFloat(a.price);
     if (sort === 'newest') return b.id - a.id;
-    // popular: fresh-market is pinned first, then by pseudo click count
-    if (a.slug === 'fresh-market-ai-manager') return -1;
-    if (b.slug === 'fresh-market-ai-manager') return 1;
+    // popular: insurance-ai-sales-assistant pinned first, then by pseudo click count
+    if (a.slug === 'insurance-ai-sales-assistant') return -1;
+    if (b.slug === 'insurance-ai-sales-assistant') return 1;
     const clicksA = ((a.id * 89 + 11) % 50) + 5;
     const clicksB = ((b.id * 89 + 11) % 50) + 5;
     return clicksB - clicksA;
@@ -2027,11 +2532,10 @@ function HomeContent() {
         {/* Hero */}
         <div className="claw-hero" style={{ paddingTop: 80 }}>
           <h1 className="claw-hero-title" style={{ fontWeight: 400, fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-            让你的店铺马上拥有AI能力
+            AI企业落地解决方案
           </h1>
           <p className="claw-hero-subtitle" style={{ fontWeight: 300, letterSpacing: '0.05em' }}>
-            客户端：AI智能客服，预定，下单，排号留座<br />
-            门店端：AI记账、经营预测、报表分析、AI营销文案海报视频
+            整合的AI客户管理系统、AI进销存系统、AI账单系统、AI客服系统、经营预测分析系统
           </p>
           <button
             onClick={() => setShowOnboarding(true)}
@@ -2056,6 +2560,140 @@ function HomeContent() {
 
         {/* Onboarding chat modal */}
         {showOnboarding && <OnboardingChat onClose={() => setShowOnboarding(false)} />}
+
+        {/* 银行业 AI 场景展示 */}
+        <section style={{ padding: '72px 24px', background: 'rgba(240, 232, 225, 0.5)' }}>
+          <style>{`
+            .bank-scene-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 32px;
+              margin-top: 48px;
+            }
+            .bank-chat-card {
+              background: white;
+              border-radius: 16px;
+              border: 1px solid rgba(42,31,25,0.08);
+              box-shadow: 0 4px 24px rgba(42,31,25,0.06);
+              overflow: hidden;
+              display: flex;
+              flex-direction: column;
+            }
+            .bank-chat-header {
+              padding: 16px 20px;
+              border-bottom: 1px solid rgba(42,31,25,0.07);
+              display: flex;
+              align-items: center;
+              gap: 10px;
+            }
+            .bank-chat-avatar {
+              width: 36px; height: 36px; border-radius: 50%;
+              display: flex; align-items: center; justify-content: center;
+              font-size: 18px;
+              flex-shrink: 0;
+            }
+            .bank-chat-body {
+              padding: 20px;
+              display: flex;
+              flex-direction: column;
+              gap: 14px;
+              flex: 1;
+            }
+            .bank-msg {
+              display: flex;
+              gap: 10px;
+              align-items: flex-start;
+            }
+            .bank-msg.user { flex-direction: row-reverse; }
+            .bank-msg-avatar {
+              width: 30px; height: 30px; border-radius: 50%;
+              display: flex; align-items: center; justify-content: center;
+              font-size: 14px; flex-shrink: 0;
+            }
+            .bank-msg-bubble {
+              max-width: 82%;
+              padding: 10px 14px;
+              border-radius: 12px;
+              font-size: 13.5px;
+              line-height: 1.6;
+              white-space: pre-line;
+            }
+            .bank-msg.ai .bank-msg-bubble {
+              background: #F8F2ED;
+              color: #2A1F19;
+              border-bottom-left-radius: 4px;
+            }
+            .bank-msg.user .bank-msg-bubble {
+              background: #E65C46;
+              color: white;
+              border-bottom-right-radius: 4px;
+            }
+            .bank-scene-tag {
+              display: inline-flex; align-items: center; gap: 6px;
+              background: rgba(230,92,70,0.1); color: #E65C46;
+              border-radius: 20px; padding: 4px 12px;
+              font-size: 12px; font-weight: 600;
+              margin-bottom: 8px;
+            }
+            @media (max-width: 768px) {
+              .bank-scene-grid { grid-template-columns: 1fr; gap: 20px; }
+            }
+            @keyframes bankMsgIn {
+              from { opacity: 0; transform: translateY(8px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes bankDot {
+              0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+              40% { opacity: 1; transform: scale(1.2); }
+            }
+          `}</style>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <div className="bank-scene-tag">🏦 银行业 AI 方案</div>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#2A1F19', fontFamily: "'Bricolage Grotesque', sans-serif", marginBottom: 12 }}>
+              让每位客户经理都拥有<span style={{ color: '#E65C46' }}>专属 AI 助理</span>
+            </h2>
+            <p style={{ color: '#6B5549', fontSize: 16, maxWidth: 600, lineHeight: 1.7 }}>
+              从高净值客户维护到产品推荐、风险评估，AI 助理全程辅助客户经理，提升服务质量与成交转化。
+            </p>
+            <button
+              onClick={openBankDemo}
+              style={{
+                marginTop: 20, display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '10px 24px', borderRadius: 100,
+                background: '#E65C46', color: 'white',
+                border: 'none', cursor: 'pointer',
+                fontSize: 14, fontWeight: 700,
+                fontFamily: "'Manrope', sans-serif",
+                boxShadow: '0 4px 16px rgba(230,92,70,0.25)',
+              }}
+            >
+              📱 手机演示
+            </button>
+
+            <div className="bank-scene-grid">
+              {/* 场景一：高净值客户维护（自动滚动） */}
+              <BankScrollChat />
+
+              {/* 场景二：智能产品匹配（自动滚动） */}
+              <BankProductChat />
+            </div>
+
+            {/* 底部指标 */}
+            <div style={{ display: 'flex', gap: 32, marginTop: 48, flexWrap: 'wrap' }}>
+              {[
+                { num: '3×', label: '客户经理日均跟进量提升' },
+                { num: '85%', label: '产品推荐合规通过率' },
+                { num: '40%', label: '高净值客户流失率下降' },
+                { num: '2min', label: '客户档案 + 方案生成时间' },
+              ].map((s, i) => (
+                <div key={i} style={{ flex: '1 1 160px', background: 'white', borderRadius: 12, padding: '20px 24px', border: '1px solid rgba(42,31,25,0.07)' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#E65C46', fontFamily: "'Bricolage Grotesque', sans-serif" }}>{s.num}</div>
+                  <div style={{ fontSize: 13, color: '#6B5549', marginTop: 4 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* Demo modal */}
         {showDemo && (
@@ -2170,7 +2808,7 @@ function HomeContent() {
           <div className="claw-industries-overview">
             <div className="claw-section-header" style={{ marginBottom: 0, justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <h2 className="claw-section-title">AI店铺展示</h2>
+                <h2 className="claw-section-title">行业案例展示</h2>
               </div>
               <select
                 className="claw-sort-select"

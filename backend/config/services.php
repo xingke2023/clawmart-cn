@@ -35,6 +35,11 @@ return [
         ],
     ],
 
+    'image_gen' => [
+        'base_url' => env('IMAGE_GEN_BASE_URL', 'https://tokens.fidelityai.net'),
+        'api_key'  => env('IMAGE_GEN_API_KEY', ''),
+    ],
+
     'anthropic' => [
         'api_key'  => env('ANTHROPIC_API_KEY'),
         'model'    => env('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),

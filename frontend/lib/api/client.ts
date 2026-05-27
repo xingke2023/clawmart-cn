@@ -73,6 +73,25 @@ class ApiClient {
   async delete<T>(endpoint: string, token?: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE', token });
   }
+
+  async postForm<T>(endpoint: string, data: FormData, token?: string): Promise<T> {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: data,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'An error occurred');
+    }
+    return response.json();
+  }
 }
 
 export const apiClient = new ApiClient(API_URL);

@@ -60,6 +60,20 @@ return [
             'report' => false,
         ],
 
+        'cos' => [
+            'driver' => 'cos',
+            'app_id' => env('COS_APP_ID'),
+            'secret_id' => env('COS_SECRET_ID'),
+            'secret_key' => env('COS_SECRET_KEY'),
+            'region' => env('COS_REGION', 'ap-guangzhou'),
+            'bucket' => env('COS_BUCKET'),
+            'cdn' => env('COS_CDN_URL', ''),
+            'read_from_cdn' => ! empty(env('COS_CDN_URL')),
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => false,
+        ],
+
     ],
 
     /*

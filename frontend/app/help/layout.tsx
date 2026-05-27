@@ -3,12 +3,12 @@ import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "帮助中心 — 常见问题与使用指南",
   description:
-    "Claw Mart 帮助中心：购买问题、退款政策、如何成为卖家、支持哪些支付方式、AI 员工安装指南等常见问题解答。",
+    "Claw Mart 帮助中心：购买问题、退款政策、如何成为卖家、支持哪些支付方式、AI 工具安装指南等常见问题解答。",
   alternates: { canonical: "https://www.clawmart.cn/help" },
   openGraph: {
     title: "帮助中心 — Claw Mart 常见问题",
     description:
-      "关于购买、退款、卖家入驻、支付方式和 AI 员工安装的常见问题与解答。",
+      "关于购买、退款、卖家入驻、支付方式和 AI 工具安装的常见问题与解答。",
     url: "https://www.clawmart.cn/help",
   },
 };

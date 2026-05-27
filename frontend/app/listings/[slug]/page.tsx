@@ -3,7 +3,7 @@
 import { useEffect, useState, use, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { listingsApi, Listing } from "@/lib/api";
+import { listingsApi, Listing, DemoMessage, DemoPersona } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
   ChevronLeft, ShoppingCart, CheckCircle2, ShieldCheck, Zap,
@@ -137,6 +137,9 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
   const [showDemo, setShowDemo] = useState(false);
   const [visibleMsgs, setVisibleMsgs] = useState<number[]>([]);
   const [showTyping, setShowTyping] = useState(false);
+  const [currentDemoMsgs, setCurrentDemoMsgs] = useState<DemoMessage[]>([]);
+  const [currentPersonas, setCurrentPersonas] = useState<DemoPersona[]>([]);
+  const [activePersonaIdx, setActivePersonaIdx] = useState(0);
   const demoTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const msgsRef = useRef<HTMLDivElement>(null);
 
@@ -146,28 +149,16 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
     }
   }, [visibleMsgs, showTyping]);
 
-  const openDemo = useCallback(() => {
-    setShowDemo(true);
-    setVisibleMsgs([]);
-    setShowTyping(false);
+  const playDemoMsgs = useCallback((messages: DemoMessage[]) => {
     demoTimers.current.forEach(clearTimeout);
     demoTimers.current = [];
-  }, []);
-
-  const closeDemo = useCallback(() => {
-    setShowDemo(false);
-    demoTimers.current.forEach(clearTimeout);
     setVisibleMsgs([]);
     setShowTyping(false);
-  }, []);
-
-  const runDemoAnimation = useCallback((messages: { type: string; text: string }[]) => {
     const count = messages.length;
-    const aiTyping  = count > 6 ? 1000 : 1400;
-    const aiRead    = count > 6 ? 1500 : 2200;
+    const aiTyping   = count > 6 ? 1000 : 1400;
+    const aiRead     = count > 6 ? 1500 : 2200;
     const userTyping = count > 6 ? 500  : 700;
     const userRead   = count > 6 ? 700  : 1000;
-
     let delay = 300;
     messages.forEach((msg, i) => {
       if (i > 0) {
@@ -184,11 +175,39 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
     });
   }, []);
 
-  const skipDemo = useCallback((messages: { type: string; text: string }[]) => {
+  const openDemo = useCallback((listing: Listing) => {
+    const personas: DemoPersona[] = listing.demo_personas?.length
+      ? listing.demo_personas
+      : listing.demo_messages?.length
+        ? [{ label: '演示', messages: listing.demo_messages }]
+        : [];
+    if (!personas.length) return;
+    setCurrentPersonas(personas);
+    setActivePersonaIdx(0);
+    setCurrentDemoMsgs(personas[0].messages);
+    setShowDemo(true);
+    playDemoMsgs(personas[0].messages);
+  }, [playDemoMsgs]);
+
+  const switchPersona = useCallback((idx: number, personas: DemoPersona[]) => {
+    setActivePersonaIdx(idx);
+    const msgs = personas[idx].messages;
+    setCurrentDemoMsgs(msgs);
+    playDemoMsgs(msgs);
+  }, [playDemoMsgs]);
+
+  const closeDemo = useCallback(() => {
+    setShowDemo(false);
+    demoTimers.current.forEach(clearTimeout);
+    setVisibleMsgs([]);
+    setShowTyping(false);
+  }, []);
+
+  const skipDemo = useCallback(() => {
     demoTimers.current.forEach(clearTimeout);
     setShowTyping(false);
-    setVisibleMsgs(messages.map((_, i) => i));
-  }, []);
+    setVisibleMsgs(currentDemoMsgs.map((_, i) => i));
+  }, [currentDemoMsgs]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -228,11 +247,11 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
 
   // Auto-play demo for 行业方案 listings
   useEffect(() => {
-    if (listing && listing.category === '行业方案' && listing.demo_messages && listing.demo_messages.length > 0) {
-      openDemo();
-      runDemoAnimation(listing.demo_messages);
+    if (listing && listing.category === '行业方案') {
+      const hasDemo = listing.demo_personas?.length || listing.demo_messages?.length;
+      if (hasDemo) openDemo(listing);
     }
-  }, [listing, openDemo, runDemoAnimation]);
+  }, [listing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBuy = async () => {
     if (!isAuthenticated) {
@@ -337,7 +356,7 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
         <ClawNav />
 
         {/* Demo Modal - Phone Style */}
-        {showDemo && listing.demo_messages && (
+        {showDemo && currentDemoMsgs.length > 0 && (
           <div className="detail-demo-overlay" onClick={closeDemo}>
             <div className="detail-phone" onClick={e => e.stopPropagation()}>
               <button className="detail-demo-close" onClick={closeDemo}>×</button>
@@ -376,7 +395,7 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
                     </div>
                   </div>
                   <div className="detail-phone-msgs" ref={msgsRef}>
-                    {listing.demo_messages.map((msg, i) => (
+                    {currentDemoMsgs.map((msg, i) => (
                       visibleMsgs.includes(i) && (
                         <div key={i} className={`detail-msg ${msg.type} visible`} style={{ whiteSpace: 'pre-line' }}>
                           {msg.text.replace(/\\n/g, '\n')}
@@ -389,26 +408,43 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
                       </div>
                     )}
                   </div>
-                  {visibleMsgs.length < listing.demo_messages.length && (
-                    <div style={{
-                      padding: '8px 14px',
-                      borderTop: '1px solid rgba(42,31,25,0.08)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      background: '#fff', flexShrink: 0,
-                    }}>
-                      <span style={{ fontSize: 11, color: '#9e8074', fontFamily: "'Manrope',sans-serif" }}>
-                        {visibleMsgs.length} / {listing.demo_messages.length} 条
-                      </span>
-                      <button onClick={() => skipDemo(listing.demo_messages!)} style={{
-                        fontSize: 11, fontWeight: 700, color: '#E65C46',
-                        background: 'rgba(230,92,70,0.08)', border: '1px solid rgba(230,92,70,0.25)',
-                        borderRadius: 100, padding: '3px 12px', cursor: 'pointer',
-                        fontFamily: "'Manrope',sans-serif",
-                      }}>
-                        ⚡ 展示全部
-                      </button>
+                  <div style={{
+                    padding: '7px 12px',
+                    borderTop: '1px solid rgba(42,31,25,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: '#fff', flexShrink: 0, gap: 8,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {currentPersonas.length > 1 && currentPersonas.map((p, idx) => (
+                        <button key={idx} onClick={() => switchPersona(idx, currentPersonas)} style={{
+                          fontSize: 11, fontWeight: 700,
+                          color: activePersonaIdx === idx ? '#fff' : '#9e8074',
+                          background: activePersonaIdx === idx ? '#E65C46' : 'rgba(42,31,25,0.06)',
+                          border: 'none', borderRadius: 100,
+                          padding: '4px 10px', cursor: 'pointer',
+                          fontFamily: "'Manrope',sans-serif",
+                          transition: 'all 0.15s',
+                        }}>
+                          {p.label}
+                        </button>
+                      ))}
                     </div>
-                  )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 10, color: '#9e8074', fontFamily: "'Manrope',sans-serif" }}>
+                        {visibleMsgs.length} / {currentDemoMsgs.length} 条
+                      </span>
+                      {visibleMsgs.length < currentDemoMsgs.length && (
+                        <button onClick={skipDemo} style={{
+                          fontSize: 11, fontWeight: 700, color: '#E65C46',
+                          background: 'rgba(230,92,70,0.08)', border: '1px solid rgba(230,92,70,0.25)',
+                          borderRadius: 100, padding: '3px 10px', cursor: 'pointer',
+                          fontFamily: "'Manrope',sans-serif",
+                        }}>
+                          ⚡ 快进
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -472,9 +508,9 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
                         {listing.name}
                       </h1>
                       <span className="claw-card-badge" style={{ marginTop: 6, flexShrink: 0 }}>{listing.category}</span>
-                      {listing.demo_messages && listing.demo_messages.length > 0 && (
+                      {(listing.demo_personas?.length || listing.demo_messages?.length) ? (
                         <button
-                          onClick={() => { openDemo(); runDemoAnimation(listing.demo_messages!); }}
+                          onClick={() => openDemo(listing)}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 5,
                             marginTop: 5,
@@ -494,7 +530,7 @@ export default function ListingDetail({ params }: { params: Promise<{ slug: stri
                           <Play size={11} fill="#E65C46" />
                           查看演示
                         </button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -899,9 +935,9 @@ ${(listing.description || '技能描述').split('\n')[0].substring(0, 80)}
                     提交定制化需求
                   </Link>
 
-                  {listing.demo_messages && listing.demo_messages.length > 0 && (
+                  {(listing.demo_personas?.length || listing.demo_messages?.length) ? (
                     <button
-                      onClick={() => { openDemo(); runDemoAnimation(listing.demo_messages!); }}
+                      onClick={() => openDemo(listing)}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                         padding: '10px 20px',
@@ -919,7 +955,7 @@ ${(listing.description || '技能描述').split('\n')[0].substring(0, 80)}
                       <Play size={14} fill="#E65C46" />
                       查看演示
                     </button>
-                  )}
+                  ) : null}
                 </div>
 
                 <hr style={{ border: 'none', borderTop: '1px solid rgba(42,31,25,0.08)', margin: '0 0 18px' }} />

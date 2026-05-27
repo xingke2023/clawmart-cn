@@ -104,7 +104,11 @@ npx shadcn@latest add [component-name]
 APP_URL=http://0.0.0.0:8068
 FRONTEND_URL=http://0.0.0.0:3111
 SANCTUM_STATEFUL_DOMAINS=localhost:3111,localhost,0.0.0.0:3111,0.0.0.0
-DB_CONNECTION=sqlite
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=clawmartcn
+DB_USERNAME=clawmartcn
 ```
 
 ### Frontend Environment (frontend/.env.local)
@@ -393,9 +397,9 @@ When creating new listings via seed or seller dashboard, default price is 0.
 
 ## Technology Versions
 
-- Laravel 12.10.1, PHP 8.4.1, Sanctum 4.2.1, Pest 4.1.6
+- Laravel 13.8.0, PHP 8.4.1, Sanctum 4.x, Pest 4.4+, Filament 5.6.3, Livewire 4.x
 - Next.js 16.0.5, React 19.2.0, TypeScript 5.x, Tailwind CSS 4.x
-- Database: SQLite (development), migrate to MySQL/PostgreSQL for production
+- Database: PostgreSQL（生产和开发均使用 pgsql，数据库名 clawmartcn）
 
 ## Troubleshooting
 

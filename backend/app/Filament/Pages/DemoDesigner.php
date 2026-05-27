@@ -10,7 +10,7 @@ use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 
@@ -18,11 +18,11 @@ class DemoDesigner extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
     protected static ?string $navigationLabel = '演示对话设计器';
-    protected static ?string $navigationGroup = 'AI 内容工具';
+    protected static string|\UnitEnum|null $navigationGroup = 'AI 内容工具';
     protected static ?int $navigationSort = 2;
-    protected static string $view = 'filament.pages.demo-designer';
+    protected string $view = 'filament.pages.demo-designer';
 
     // 表单状态
     public ?int $solution_id = null;
@@ -46,7 +46,7 @@ class DemoDesigner extends Page implements HasForms
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $form): Schema
     {
         return $form->schema([
             Select::make('solution_id')
@@ -85,6 +85,7 @@ class DemoDesigner extends Page implements HasForms
             CheckboxList::make('modules')
                 ->label('覆盖功能模块')
                 ->options(fn() => collect($this->availableModules)->mapWithKeys(fn($m) => [$m => $m])->toArray())
+                ->default([])
                 ->columns(2)
                 ->visible(fn() => count($this->availableModules) > 0),
 

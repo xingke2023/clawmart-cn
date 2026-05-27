@@ -1,14 +1,14 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "关于我们 — AI 员工交付中心",
+  title: "关于我们 — 小微企业龙虾解决方案提供商",
   description:
-    "了解 Claw Mart：我们是由每天在生产环境中运行 AI 员工的人创建的市场，提供经过验证的 OpenClaw AI 员工人设与技能，帮助任何人在几分钟内完成部署。",
+    "了解 Claw Mart：我们是专注小微企业的 AI 工具平台，提供即购即用的 AI 技能包与行业解决方案，帮助小微企业用上真正好用的 AI 工具。",
   alternates: { canonical: "https://www.clawmart.cn/about" },
   openGraph: {
-    title: "关于 Claw Mart — AI 员工交付中心",
+    title: "关于 Claw Mart — 小微企业龙虾解决方案提供商",
     description:
-      "Claw Mart 是专业的 AI 员工市场，提供经生产验证的 OpenClaw AI 员工人设与技能包。",
+      "Claw Mart 是专注小微企业的 AI 工具平台，提供 AI 技能包与行业解决方案，覆盖门店运营、客服、销售、内容创作等场景。",
     url: "https://www.clawmart.cn/about",
   },
 };
@@ -19,7 +19,7 @@ const schema = {
   name: "关于 Claw Mart",
   url: "https://www.clawmart.cn/about",
   description:
-    "Claw Mart 是专业的 AI 员工市场，由 HONGKONG MACRODATA TECHNOLOGY LIMITED 运营，提供即购即用的 OpenClaw AI 员工。",
+    "Claw Mart 是专注小微企业的 AI 工具平台，由 HONGKONG MACRODATA TECHNOLOGY LIMITED 运营，提供即购即用的 AI 技能包与行业解决方案。",
   breadcrumb: {
     "@type": "BreadcrumbList",
     itemListElement: [

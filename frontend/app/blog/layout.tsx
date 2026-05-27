@@ -1,14 +1,14 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "博客 — AI 员工资讯与使用指南",
+  title: "博客 — AI 工具资讯与使用指南",
   description:
-    "Claw Mart 博客：AI 员工使用技巧、OpenClaw 工作流教程、提示词工程实践、AI 自动化案例分享。",
+    "Claw Mart 博客：小微企业 AI 工具使用技巧、行业解决方案案例、AI 自动化实践与经验分享。",
   alternates: { canonical: "https://www.clawmart.cn/blog" },
   openGraph: {
-    title: "博客 — Claw Mart AI 员工资讯",
+    title: "博客 — Claw Mart AI 工具资讯",
     description:
-      "AI 员工使用技巧、OpenClaw 工作流教程与 AI 自动化最佳实践。",
+      "小微企业 AI 工具使用技巧、行业解决方案案例与 AI 自动化最佳实践。",
     url: "https://www.clawmart.cn/blog",
   },
 };
@@ -18,7 +18,7 @@ const schema = {
   "@type": "Blog",
   name: "Claw Mart 博客",
   url: "https://www.clawmart.cn/blog",
-  description: "AI 员工使用指南、OpenClaw 工作流教程与 AI 自动化实践分享",
+  description: "小微企业 AI 工具使用指南、行业解决方案案例与 AI 自动化实践分享",
   publisher: {
     "@type": "Organization",
     name: "Claw Mart",

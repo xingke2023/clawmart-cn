@@ -35,7 +35,7 @@ export default function CompanyPage() {
               关于 <span className="claw-accent">我们</span>
             </h1>
             <p className="claw-lead">
-              HONGKONG MACRODATA TECHNOLOGY LIMITED 是一家专注于 AI 自动化技术与智能工作流交付的科技公司，致力于帮助企业和个人用最低的成本获得最强的 AI 员工能力。
+              宏泰国际 是一家专注于 AI 自动化技术与智能工作流交付的科技公司，致力于帮助企业和个人用最低的成本获得最强的 AI 员工能力。
             </p>
           </section>
 
@@ -144,7 +144,7 @@ export default function CompanyPage() {
               <div className="claw-card" style={{ padding: '28px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: '#9e8074', marginBottom: 16 }}>注册公司</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#2A1F19', marginBottom: 8, fontFamily: "'Bricolage Grotesque', sans-serif" }}>
-                  HONGKONG MACRODATA TECHNOLOGY LIMITED
+                  宏泰国际
                 </div>
                 <div style={{ fontSize: 14, color: '#6B5549', lineHeight: 1.65 }}>
                   香港特别行政区注册科技企业<br />

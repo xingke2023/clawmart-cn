@@ -18,9 +18,9 @@ class PostFactory extends Factory
     {
         return [
             'user_id' => \App\Models\User::factory(),
-            'title' => fake()->sentence(),
-            'content' => fake()->paragraphs(3, true),
-            'published' => fake()->boolean(70),
+            'title' => 'Post '.\Illuminate\Support\Str::random(8),
+            'content' => 'Content '.\Illuminate\Support\Str::random(40),
+            'published' => (bool) random_int(0, 1),
         ];
     }
 }

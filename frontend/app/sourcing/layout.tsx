@@ -1,14 +1,14 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "定制需求 — 找到专属 AI 员工",
+  title: "定制需求 — 找到专属 AI 工具解决方案",
   description:
-    "在 Claw Mart 找不到合适的 AI 员工？提交定制需求，我们将为您匹配专属开发者，量身打造符合您业务场景的 OpenClaw AI 员工。",
+    "在 Claw Mart 找不到合适的 AI 工具？提交定制需求，我们将为您匹配专属开发者，量身打造符合您小微企业业务场景的 AI 解决方案。",
   alternates: { canonical: "https://www.clawmart.cn/sourcing" },
   openGraph: {
-    title: "定制需求 — Claw Mart 专属 AI 员工",
+    title: "定制需求 — Claw Mart 专属 AI 解决方案",
     description:
-      "提交您的 AI 员工定制需求，由专业开发者为您打造专属解决方案。",
+      "提交您的 AI 工具定制需求，由专业开发者为小微企业打造专属解决方案。",
     url: "https://www.clawmart.cn/sourcing",
   },
 };
@@ -16,16 +16,16 @@ export const metadata: Metadata = {
 const schema = {
   "@context": "https://schema.org",
   "@type": "Service",
-  name: "AI 员工定制服务",
+  name: "AI 工具定制服务",
   url: "https://www.clawmart.cn/sourcing",
   description:
-    "根据用户业务需求，由专业开发者量身打造 OpenClaw AI 员工，提供定制化 AI 自动化解决方案。",
+    "根据小微企业业务需求，由专业开发者量身打造 AI 工具与行业解决方案，提供定制化 AI 自动化服务。",
   provider: {
     "@type": "Organization",
     name: "Claw Mart",
     url: "https://www.clawmart.cn",
   },
-  serviceType: "AI 员工定制开发",
+  serviceType: "AI 工具定制开发",
   areaServed: { "@type": "Country", name: "China" },
   availableChannel: {
     "@type": "ServiceChannel",
