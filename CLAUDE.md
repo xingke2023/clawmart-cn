@@ -109,12 +109,50 @@ DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_DATABASE=clawmartcn
 DB_USERNAME=clawmartcn
+
+# LLM (开店助手 industry/name/functions/hasAccount 兜底用)
+DEEPSEEK_API_KEY2=sk-...        # 注意末尾的 "2"，services.deepseek.api_key 读这个
+DEEPSEEK_MODEL=deepseek-chat
+# 可选：行业方案生成（IndustryGeneratorService）用 Claude
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-haiku-4-5-20251001
 ```
 
 ### Frontend Environment (frontend/.env.local)
 ```
 NEXT_PUBLIC_API_URL=http://0.0.0.0:8068/api
+
+# /api/store-chat（newListing 智能填写商品）用，**注意是 DEEPSEEK_API_KEY 不带 2**
+DEEPSEEK_API_KEY=sk-...
 ```
+
+**重要：两套 Deepseek key 命名差一个字符**：后端 `DEEPSEEK_API_KEY2`（有 2），前端 `DEEPSEEK_API_KEY`（无 2）。它们各自独立，互不影响。
+
+### 生产端口（经 nginx 反代）
+开发约定 8068/3111 写在文档里，但**生产环境**实际跑在：
+- Laravel：`127.0.0.1:8072`（PM2 进程名 `clawmart-cn-backend`，id 6）
+- Next.js：`127.0.0.1:3113`（PM2 进程名 `clawmart-cn-frontend`，id 7）
+- nginx `cn.clawmart.cn` / `www.clawmart.cn` → 上面两个端口
+- 配置文件：`/etc/nginx/sites-enabled/{cn,www}.clawmart.cn`
+
+### PM2 生产进程管理（重要）
+生产前后端都由 **PM2** 守护。**不要直接 `npm start` / `php artisan serve`**——会跟 PM2 抢同一端口，启动悄悄失败。
+
+发布流程：
+```bash
+# 前端：build 完 pm2 restart（PM2 会读取新的 .next/）
+cd frontend && npm run build && pm2 restart clawmart-cn-frontend
+
+# 后端
+pm2 restart clawmart-cn-backend
+```
+
+常用命令：
+- `pm2 list` — 所有进程总览
+- `pm2 logs clawmart-cn-frontend --lines 100` — 实时日志
+- `pm2 describe clawmart-cn-frontend | grep -E 'status|uptime|restarts|exec cwd'` — 状态摘要
+
+**陷阱**：`kill <next-server-pid>` 停不掉服务，PM2 会立刻拉起新进程，旧 manifest 继续被服务。要真停得 `pm2 stop`；要替换要 `pm2 restart`。
 
 ## Common Development Tasks
 
@@ -343,6 +381,75 @@ When creating new listings via seed or seller dashboard, default price is 0.
 - `PUT /api/profile` — update profile fields
 - `POST /api/become-seller` — set is_seller=true
 
+### Public LLM endpoints — 首页开店助手 (throttle:20,1, Cache 24h)
+- `POST /api/onboarding/classify-industry` — body `{text}` → `{industry, confidence, reason}`，6 个枚举 + `unknown` + `其他`
+- `POST /api/onboarding/validate` — body `{step: "name"|"functions"|"hasAccount", text}` → `{valid, reason, data}`
+  - `step=name`：判是否像合理店铺名
+  - `step=functions`：解析想要的功能集合，`data.matched: string[]`
+  - `step=hasAccount`：判断有无账号，`data.has_account: boolean`
+
+**前端入口**：`storeApi.classifyIndustry(text)` 和 `storeApi.validateOnboarding(step, text)`（见 `frontend/lib/api/store.ts`）。在 `frontend/app/page.tsx` 的 `handleChatInput` 和 `handleNameSubmit` 里调用，按钮路径**不**调 LLM，仅自由文本输入触发。异常一律静默降级到旧行为，不弹错误。
+
+## 开店助手聊天面板（首页 `app/page.tsx`）
+
+首页有一个浮动入口（🦞 Clawmart 开店助手），点开是固定全屏 modal 的聊天对话。这是新用户首次开店的引导入口，也是已登录卖家的快捷管理面板。**所有改动都集中在 `frontend/app/page.tsx`**，不要拆出独立组件——状态依赖很重。
+
+### Step 状态机
+全部状态写在 `OnboardingStep` union type 上：
+- 未登录引导：`industry` → `name` → `functions` → `hasAccount` → `register` / `login`
+- 登录后管理：`manage`（主菜单）/ `newListing`（上架表单）/ `viewListings`（商品库存）/ `viewBookings`（订单列表）
+
+### 主菜单按钮（`step === 'manage'`）
+- **卖家** (`user.is_seller === true`)：上架新商品 · 商品及库存 · 经营报表 · 使用说明 · 预定和订单
+- **非卖家**：「激活卖家权限（免费）」大按钮 + 经营报表 · 使用说明 小按钮
+
+### 经营报表 弹出菜单（重要）
+**这不是 step 切换，是悬浮 dropdown**：
+- 触发按钮右侧带 7×1px 三横线浅灰图标 `rgba(42,31,25,0.3)`，作为可展开的视觉提示
+- 状态：`const [showReportMenu, setShowReportMenu] = useState(false)` + `reportMenuRef`
+- 弹层 `position: absolute; bottom: calc(100% + 6px)`，从按钮**上方**升起
+- 锚定容器：`<div ref={reportMenuRef} style={{ position: 'relative', flex: 1 }}>`
+- `useEffect` 监听 `mousedown` / `touchstart`，点击容器外自动关闭
+- 选项点击 → `setShowReportMenu(false)` + 调对应 `handleReport*` → 报表以多条气泡推入聊天，**step 保持 `manage`**
+
+报表选项集中定义在 `reportItems: { label, fn }[]` 数组里。新增 / 调整顺序只改这一处。
+
+### 报表 Handlers 模式
+4 个独立函数：`handleReportProducts` / `handleReportStock` / `handleReportBookings` / `handleReportNotes`。统一套路：
+1. push 用户气泡（如 `"商品概览"`）
+2. `setWaitingUser(false)` + `setTyping(true)`
+3. `await storeApi.getMyProducts / getMyBookings / getMyNotes`
+4. 本地聚合（按 `is_active` / `stock` / `status` / `type` 分桶，近 7 天用 `Date.now() - 7 * 24 * 3600 * 1000`）
+5. `pushSequence([...lines])` 推 3–4 条 AI 气泡
+6. `catch` 静默降级，`pushAI` 一句友好错误
+
+### 按钮文字设计规则
+**聊天面板内所有按钮 label 不带左侧 emoji logo**。保留 `←` 返回 / `✕` 取消 等功能性 unicode 符号。订单卡片里 `📦 商品×数量` 这类**内容性** emoji 不算按钮装饰，保留。
+
+新增按钮时遵守此规则；如果按钮点击后还会 push 一条 user 气泡镜像按钮文字（让聊天里"看起来像用户说了一句话"），气泡文字也得跟按钮 label 一致（同样不带 emoji）。
+
+## LLM 集成模式
+
+后端有两套 LLM 通道（`config/services.php`）：
+- `services.anthropic` — `IndustryGeneratorService::callClaude()`（行业方案生成用）
+- `services.deepseek` — `IndustryGeneratorService::callDeepSeek()`（开店助手兜底用）
+
+**新增需调 LLM 的端点时的标准模式**：
+1. 业务 Service 注入 `IndustryGeneratorService`，调 `callDeepSeek($prompt)` 或 `callClaude($prompt)` —— **不要自己写 HTTP 客户端**
+2. 在 Service 入口检查 `empty(config('services.deepseek.api_key'))` → 直接返回 fallback 结构，不抛异常
+3. 用 `try/catch (Throwable)` 包住 LLM 调用，失败时 `Log::warning` 并返回 fallback —— 用户永远不该看到 500
+4. JSON 解析用与 `IndustryClassifierService::parseJson()` 类似的清理（去 markdown 包裹 + regex 提取 `{...}` + `json_decode`）
+5. Controller 用 `Cache::remember('prefix:'.md5($text), 24h, fn() => ...)` 包一层，相同输入 24h 内不重复调用
+6. 路由加 `->middleware('throttle:20,1')` —— 公开端点防滥用
+
+参考实现：`IndustryClassifierService.php`、`OnboardingValidatorService.php`、`OnboardingController.php`。
+
+**前端 LLM 化的设计原则**：
+- 按钮 / chips / 二选 → 直接推进，**不调 LLM**（省钱、即时）
+- 自由文本输入 → 调 LLM 校验或解析
+- LLM 判 `invalid` → 复读问题，**停留在当前步骤**，不推进
+- 异常 / 网络断 → 静默降级到原有"接受原文"的行为，不弹错误对话框
+
 ## 行业方案 Listing 模版
 
 `行业方案` 是平台的高价值品类（category: `行业方案`），每个 listing 代表针对某一行业的**完整 AI 解决方案套件**，而非单个技能包。
@@ -414,6 +521,20 @@ When creating new listings via seed or seller dashboard, default price is 0.
 - Check token is being sent: inspect Network tab in DevTools
 
 ### Port Conflicts
-Current setup uses non-standard ports (8068, 3111) to avoid conflicts. Modify:
+Dev convention: backend 8068, frontend 3111。**生产实际为 8072 + 3113**（见上面"生产端口"）。修改：
 - Backend: `backend/.env` APP_URL and serve command
 - Frontend: `frontend/package.json` dev script and `.env.local`
+- 改生产端口时记得同步 `/etc/nginx/sites-enabled/{cn,www}.clawmart.cn` 的 `proxy_pass`
+
+### LLM 兜底返回 `fallback: no api key`
+- 检查 `backend/.env` 里 `DEEPSEEK_API_KEY2`（**带 2**）是否填了
+- 改完跑 `php artisan config:clear`（Laravel 默认不缓存 config，但有时 opcache 会卡）
+- 直接 curl 验证：`curl -X POST http://127.0.0.1:8072/api/onboarding/classify-industry -H 'Content-Type: application/json' -d '{"text":"我开烧烤店"}'`
+
+### 前端没用新 build / 旧行为复现
+- Next.js 生产模式（PM2 → `next start`）**不热重载**，build 完必须 `pm2 restart clawmart-cn-frontend`
+- 别 `kill -9` 直接打 next-server pid —— PM2 会立刻把新进程拉起来，旧 manifest 照样在用；只有 `pm2 restart` / `pm2 stop` 有效
+- 自己手敲 `npm start` 启服务会**悄悄失败**（端口被 PM2 占用 → exit code 非 0，但终端日志容易被忽略）。改完代码就走 `npm run build && pm2 restart …`
+- 浏览器可能缓存了旧 chunk → 用户硬刷（Ctrl+F5 / ⌘+Shift+R）
+- 验证当前 next-server 跑的是哪份代码：`readlink /proc/<pid>/cwd` 和 `stat -c %y /proc/<pid>`
+- 验证 PM2 是否正确重启：`pm2 describe clawmart-cn-frontend | grep -E 'status|uptime|restarts'`

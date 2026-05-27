@@ -413,6 +413,24 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
   const [nlError, setNlError]               = useState('');
   const [sellerLoading, setSellerLoading]   = useState(false);
 
+  // 经营报表 上拉菜单
+  const [showReportMenu, setShowReportMenu] = useState(false);
+  const reportMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showReportMenu) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (reportMenuRef.current && !reportMenuRef.current.contains(e.target as Node)) {
+        setShowReportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+    };
+  }, [showReportMenu]);
+
   // file/image input
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<{ name: string; type: string; size: number } | null>(null);
@@ -745,7 +763,7 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
   };
 
   const handleViewBookings = () => {
-    setMsgs(prev => [...prev, { from: 'user', text: '📅 预定和订单' }]);
+    setMsgs(prev => [...prev, { from: 'user', text: '预定和订单' }]);
     setWaitingUser(false);
     setStep('viewBookings');
     setBookingsLoading(true);
@@ -939,7 +957,8 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
         setStep('viewListings');
         pushAI("正在加载您的商品列表…", 300);
       } else if (/报表|数据|统计|分析|销量/.test(tl)) {
-        handleReport();
+        pushAI("📊 请从下方点开「经营报表」选择您想看的报表 👇", 300);
+        setShowReportMenu(true);
       } else if (/帮助|说明|怎么|如何|教|使用/.test(tl)) {
         handleHelp();
       } else if (/激活|卖家|开店/.test(tl)) {
@@ -971,7 +990,7 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
   }, [scrollBottom]);
 
   const handleHelp = () => {
-    setMsgs(prev => [...prev, { from: 'user', text: '💡 使用说明' }]);
+    setMsgs(prev => [...prev, { from: 'user', text: '使用说明' }]);
     setWaitingUser(false);
     pushSequence([
       "好的！让我来介绍一下怎么用这个对话框管理您的店铺 👇",
@@ -982,8 +1001,9 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
     ]);
   };
 
-  const handleReport = async () => {
-    setMsgs(prev => [...prev, { from: 'user', text: '📊 经营报表' }]);
+  // 📦 商品概览
+  const handleReportProducts = async () => {
+    setMsgs(prev => [...prev, { from: 'user', text: '商品概览' }]);
     setWaitingUser(false);
     if (!token) { pushAI("请先登录后再查看报表。"); return; }
     setTyping(true);
@@ -995,18 +1015,109 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
       const free   = all.filter(p => parseFloat(p.price) === 0).length;
       const paid   = all.length - free;
       const report = [
-        `📊 您的店铺经营报表`,
+        `📦 商品概览`,
         `商品总数：${all.length} 个\n✅ 上架中：${active} 个\n⏸️ 已下架：${inactive} 个`,
         `💰 付费商品：${paid} 个\n🆓 免费商品：${free} 个`,
         all.length === 0
-          ? "您还没有上架任何商品，点「上架新商品」开始吧！🚀"
-          : `数据已更新 ✨\n\n还想做什么？`,
+          ? "您还没有上架任何商品，点「← 返回」回到主菜单后选择「📦 上架新商品」吧！🚀"
+          : `数据已更新 ✨\n\n还想看哪个报表？`,
       ];
       setTyping(false);
       pushSequence(report);
     } catch {
       setTyping(false);
-      pushAI("获取报表失败，请稍后重试。");
+      pushAI("获取商品报表失败，请稍后重试。");
+    }
+  };
+
+  // 📉 库存预警
+  const handleReportStock = async () => {
+    setMsgs(prev => [...prev, { from: 'user', text: '库存预警' }]);
+    setWaitingUser(false);
+    if (!token) { pushAI("请先登录后再查看报表。"); return; }
+    setTyping(true);
+    try {
+      const res = await storeApi.getMyProducts(token);
+      const all = res?.data || [];
+      const out = all.filter(p => p.stock !== null && p.stock !== undefined && p.stock <= 0);
+      const low = all.filter(p => p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= 5);
+      const lines: string[] = [`📉 库存预警`];
+      if (all.length === 0) {
+        lines.push("您还没有上架任何商品。");
+      } else if (out.length === 0 && low.length === 0) {
+        lines.push("✅ 库存充足，暂无预警。");
+      } else {
+        if (out.length > 0) {
+          lines.push(`🔴 已售罄（${out.length} 个）\n` + out.slice(0, 10).map(p => `• ${p.name}`).join('\n'));
+        }
+        if (low.length > 0) {
+          lines.push(`🟡 库存偏低 ≤5（${low.length} 个）\n` + low.slice(0, 10).map(p => `• ${p.name}（剩 ${p.stock} ${p.unit || ''}）`).join('\n'));
+        }
+        lines.push(`💡 建议尽快补货或将售罄商品下架。`);
+      }
+      setTyping(false);
+      pushSequence(lines);
+    } catch {
+      setTyping(false);
+      pushAI("获取库存报表失败，请稍后重试。");
+    }
+  };
+
+  // 📅 订单/预定汇总
+  const handleReportBookings = async () => {
+    setMsgs(prev => [...prev, { from: 'user', text: '订单/预定汇总' }]);
+    setWaitingUser(false);
+    if (!token) { pushAI("请先登录后再查看报表。"); return; }
+    setTyping(true);
+    try {
+      const res = await storeApi.getMyBookings(token);
+      const all = res?.data || [];
+      const cnt: Record<string, number> = { pending: 0, confirmed: 0, in_progress: 0, completed: 0, cancelled: 0 };
+      all.forEach(b => { cnt[b.status] = (cnt[b.status] || 0) + 1; });
+      const sevenDaysAgo = Date.now() - 7 * 24 * 3600 * 1000;
+      const recent = all.filter(b => new Date(b.created_at).getTime() >= sevenDaysAgo).length;
+      const lines: string[] = [
+        `📅 订单/预定汇总`,
+        `订单总数：${all.length} 个\n⏳ 待处理：${cnt.pending} 个\n✅ 已确认：${cnt.confirmed} 个\n🚀 进行中：${cnt.in_progress} 个\n🎉 已完成：${cnt.completed} 个\n❌ 已取消：${cnt.cancelled} 个`,
+        `📈 近 7 天新增：${recent} 个`,
+        all.length === 0 ? "暂无订单。把店铺链接分享出去吸引客户吧 🚀" : "数据已更新 ✨",
+      ];
+      setTyping(false);
+      pushSequence(lines);
+    } catch {
+      setTyping(false);
+      pushAI("获取订单报表失败，请稍后重试。");
+    }
+  };
+
+  // 📢 动态发布
+  const handleReportNotes = async () => {
+    setMsgs(prev => [...prev, { from: 'user', text: '动态发布' }]);
+    setWaitingUser(false);
+    if (!token) { pushAI("请先登录后再查看报表。"); return; }
+    setTyping(true);
+    try {
+      const res = await storeApi.getMyNotes(token);
+      const all = res?.data || [];
+      const sevenDaysAgo = Date.now() - 7 * 24 * 3600 * 1000;
+      const weekly = all.filter(n => new Date(n.created_at).getTime() >= sevenDaysAgo);
+      const typeLabel: Record<string, string> = { discount: '促销', announcement: '公告', inventory: '库存', event: '活动', other: '其他' };
+      const byType: Record<string, number> = {};
+      weekly.forEach(n => { byType[n.type] = (byType[n.type] || 0) + 1; });
+      const breakdown = Object.entries(byType).map(([k, v]) => `• ${typeLabel[k] || k}：${v} 条`).join('\n') || '（本周暂无新发布）';
+      const latest = all[0];
+      const latestPreview = latest
+        ? `📝 最近一条（${typeLabel[latest.type] || latest.type}）\n${latest.title ? latest.title + '\n' : ''}${latest.content.length > 80 ? latest.content.slice(0, 80) + '…' : latest.content}`
+        : "暂无任何动态。试试在聊天里说「今天猪肉涨价了」可以快速记录公告 🦞";
+      setTyping(false);
+      pushSequence([
+        `📢 动态发布`,
+        `近 7 天共发布：${weekly.length} 条\n${breakdown}`,
+        latestPreview,
+      ]);
+    } catch {
+      setTyping(false);
+      pushAI("获取动态报表失败，请稍后重试。");
     }
   };
 
@@ -1027,6 +1138,40 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
           <span key={i} style={{ width: 6, height: 6, background: '#E65C46', borderRadius: '50%', display: 'inline-block', animation: `bounce 1.2s ${d}s infinite` }} />
         ))}
       </div>
+    </div>
+  );
+
+  // 经营报表 上拉弹层（锚定在 📊 经营报表 按钮上方）
+  const reportItems: { label: string; fn: () => void }[] = [
+    { label: '商品概览',     fn: handleReportProducts },
+    { label: '库存预警',     fn: handleReportStock },
+    { label: '订单/预定汇总', fn: handleReportBookings },
+    { label: '动态发布',     fn: handleReportNotes },
+  ];
+  const reportMenuPopup = showReportMenu && (
+    <div style={{
+      position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, right: 0,
+      background: '#fff', borderRadius: 12,
+      border: '1.5px solid rgba(42,31,25,0.12)',
+      boxShadow: '0 8px 24px rgba(42,31,25,0.18)',
+      padding: 4, display: 'flex', flexDirection: 'column', gap: 2,
+      zIndex: 10, animation: 'slideUp 0.18s cubic-bezier(.22,1,.36,1)',
+    }}>
+      {reportItems.map(it => (
+        <button key={it.label}
+          onClick={() => { setShowReportMenu(false); it.fn(); }}
+          style={{
+            padding: '9px 12px', fontSize: 13, fontWeight: 600,
+            border: 'none', background: 'transparent',
+            cursor: 'pointer', color: '#2A1F19',
+            fontFamily: "'Manrope', sans-serif",
+            textAlign: 'left' as const, borderRadius: 8,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(230,92,70,0.08)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        >{it.label}</button>
+      ))}
     </div>
   );
 
@@ -1051,7 +1196,7 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
             <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: "'Bricolage Grotesque', sans-serif" }}>Clawmart开店助手</div>
             <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 6, height: 6, background: '#7fff7f', borderRadius: '50%', display: 'inline-block' }} />
-              {['manage', 'newListing', 'viewListings'].includes(step) && user
+              {['manage', 'newListing', 'viewListings', 'viewBookings'].includes(step) && user
                 ? `已登录：${user.name || user.username || ''}`
                 : '在线 · 平均 3 分钟完成开店'}
             </div>
@@ -1187,51 +1332,71 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
                     需要先激活卖家权限才能上架商品 👇
                   </p>
                   <button onClick={handleBecomeSeller} disabled={sellerLoading} style={btnPrimary(sellerLoading)}>
-                    {sellerLoading ? '激活中…' : '🔓 激活卖家权限（免费）'}
+                    {sellerLoading ? '激活中…' : '激活卖家权限（免费）'}
                   </button>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button onClick={handleReport}
-                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
-                    >📊 经营报表</button>
+                    <div ref={reportMenuRef} style={{ position: 'relative', flex: 1 }}>
+                      <button onClick={() => setShowReportMenu(s => !s)}
+                        style={{ ...optBtn({ width: '100%', padding: '7px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }) }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
+                      >
+                        <span>经营报表</span>
+                        <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 1.5, flexShrink: 0 }} aria-hidden>
+                          <span style={{ width: 7, height: 1, background: 'rgba(42,31,25,0.3)', borderRadius: 1 }} />
+                          <span style={{ width: 7, height: 1, background: 'rgba(42,31,25,0.3)', borderRadius: 1 }} />
+                          <span style={{ width: 7, height: 1, background: 'rgba(42,31,25,0.3)', borderRadius: 1 }} />
+                        </span>
+                      </button>
+                      {reportMenuPopup}
+                    </div>
                     <button onClick={handleHelp}
                       style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
-                    >💡 使用说明</button>
+                    >使用说明</button>
                   </div>
                 </>
               ) : (
                 <>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => { setMsgs(prev => [...prev, { from: 'user', text: '📦 上架新商品' }]); setStep('newListing'); setTyping(true); setTimeout(() => { setTyping(false); setMsgs(prev => [...prev, { from: 'ai', text: '好的！请填写商品信息 👇' }]); setWaitingUser(true); scrollBottom(); }, 400); }}
+                    <button onClick={() => { setMsgs(prev => [...prev, { from: 'user', text: '上架新商品' }]); setStep('newListing'); setTyping(true); setTimeout(() => { setTyping(false); setMsgs(prev => [...prev, { from: 'ai', text: '好的！请填写商品信息 👇' }]); setWaitingUser(true); scrollBottom(); }, 400); }}
                       style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
-                    >📦 上架新商品</button>
-                    <button onClick={() => { setMsgs(prev => [...prev, { from: 'user', text: '📋 商品及库存' }]); setStep('viewListings'); setTyping(true); setTimeout(() => { setTyping(false); setMsgs(prev => [...prev, { from: 'ai', text: '正在加载您的商品列表…' }]); scrollBottom(); }, 300); }}
+                    >上架新商品</button>
+                    <button onClick={() => { setMsgs(prev => [...prev, { from: 'user', text: '商品及库存' }]); setStep('viewListings'); setTyping(true); setTimeout(() => { setTyping(false); setMsgs(prev => [...prev, { from: 'ai', text: '正在加载您的商品列表…' }]); scrollBottom(); }, 300); }}
                       style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
-                    >📋 商品及库存</button>
+                    >商品及库存</button>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={handleReport}
-                      style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
-                    >📊 经营报表</button>
+                    <div ref={reportMenuRef} style={{ position: 'relative', flex: 1 }}>
+                      <button onClick={() => setShowReportMenu(s => !s)}
+                        style={{ ...optBtn({ width: '100%', padding: '7px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }) }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
+                      >
+                        <span>经营报表</span>
+                        <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 1.5, flexShrink: 0 }} aria-hidden>
+                          <span style={{ width: 7, height: 1, background: 'rgba(42,31,25,0.3)', borderRadius: 1 }} />
+                          <span style={{ width: 7, height: 1, background: 'rgba(42,31,25,0.3)', borderRadius: 1 }} />
+                          <span style={{ width: 7, height: 1, background: 'rgba(42,31,25,0.3)', borderRadius: 1 }} />
+                        </span>
+                      </button>
+                      {reportMenuPopup}
+                    </div>
                     <button onClick={handleHelp}
                       style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
-                    >💡 使用说明</button>
+                    >使用说明</button>
                     <button onClick={handleViewBookings}
                       style={{ ...optBtn({ flex: 1, padding: '7px 10px', fontSize: 12 }) }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = '#E65C46'; e.currentTarget.style.background = 'rgba(230,92,70,0.06)'; }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(42,31,25,0.15)'; e.currentTarget.style.background = '#F8F2ED'; }}
-                    >📅 预定和订单</button>
+                    >预定和订单</button>
                   </div>
                 </>
               )}
@@ -1261,7 +1426,7 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
               <div style={{ display: 'flex', gap: 6 }}>
                 <button type="button" onClick={backToManage} style={{ ...optBtn({ width: 'auto', padding: '7px 12px', fontSize: 12, flexShrink: 0 }) }}>← 返回</button>
                 <button type="submit" disabled={nlSubmitting || !nlName.trim()} style={{ ...btnPrimary(nlSubmitting || !nlName.trim()), flex: 1, padding: '7px 0', fontSize: 13 }}>
-                  {nlSubmitting ? '上架中…' : '✅ 确认上架'}
+                  {nlSubmitting ? '上架中…' : '确认上架'}
                 </button>
               </div>
             </form>
@@ -1352,13 +1517,13 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
                         <button
                           onClick={() => handleBookingStatus(b.id, 'confirmed')}
                           style={{ flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600, borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontFamily: "'Manrope', sans-serif" }}
-                        >✅ 确认</button>
+                        >确认</button>
                       )}
                       {b.status === 'confirmed' && (
                         <button
                           onClick={() => handleBookingStatus(b.id, 'completed')}
                           style={{ flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 600, borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontFamily: "'Manrope', sans-serif" }}
-                        >🏁 完成</button>
+                        >完成</button>
                       )}
                       {(b.status === 'pending' || b.status === 'confirmed') && (
                         <button
