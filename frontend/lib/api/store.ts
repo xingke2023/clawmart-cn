@@ -122,4 +122,22 @@ export const storeApi = {
 
   getPublicProductPhotos: (slug: string, productId: number) =>
     apiClient.get<StoreProductPhoto[]>(`/public/store/${slug}/products/${productId}/photos`),
+
+  // ── 公开：开店助手 LLM 行业分类兜底 ──
+  classifyIndustry: (text: string) =>
+    apiClient.post<{ industry: string; confidence: number; reason: string }>(
+      '/onboarding/classify-industry',
+      { text },
+    ),
+
+  // ── 公开：开店助手 name/functions/hasAccount 自由文本校验 ──
+  validateOnboarding: (
+    step: 'name' | 'functions' | 'hasAccount',
+    text: string,
+  ) =>
+    apiClient.post<{
+      valid: boolean;
+      reason: string;
+      data: { matched?: string[]; has_account?: boolean } | null;
+    }>('/onboarding/validate', { step, text }),
 };

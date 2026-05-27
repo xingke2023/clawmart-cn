@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ListingController;
+use App\Http\Controllers\Api\OnboardingController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\SourcingRequestController;
@@ -23,6 +24,12 @@ Route::post('/sourcing', [SourcingRequestController::class, 'store']);
 
 // Stripe webhook (public, no auth)
 Route::post('/stripe/webhook', [StripeController::class, 'webhook']);
+
+// Onboarding LLM classifier (public, throttled)
+Route::post('/onboarding/classify-industry', [OnboardingController::class, 'classifyIndustry'])
+    ->middleware('throttle:20,1');
+Route::post('/onboarding/validate', [OnboardingController::class, 'validateInput'])
+    ->middleware('throttle:20,1');
 
 // ── 公开店铺查询 ──
 Route::get('/public/store', [StoreController::class, 'publicIndex']);

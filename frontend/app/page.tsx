@@ -550,16 +550,37 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
     pushAI(`好选择！${value} 行业在我们平台非常受欢迎 🔥\n\n您的店铺名称是什么？`);
   };
 
-  const handleNameSubmit = (e: React.FormEvent) => {
+  const handleNameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameInput.trim() || !waitingUser) return;
     const name = nameInput.trim();
     setWaitingUser(false);
     setNameInput('');
     setMsgs(prev => [...prev, { from: 'user', text: name }]);
-    setBizState(s => ({ ...s, name }));
-    setStep('functions');
-    pushAI(`「${name}」——好名字！✨\n\n您最希望 AI 店铺帮您实现哪些功能？（可多选）`);
+    setTyping(true);
+
+    const acceptName = () => {
+      setBizState(s => ({ ...s, name }));
+      setStep('functions');
+      pushAI(`「${name}」——好名字！✨\n\n您最希望 AI 店铺帮您实现哪些功能？（可多选）`);
+    };
+
+    try {
+      const r = await storeApi.validateOnboarding('name', name);
+      setTyping(false);
+      if (!r.valid) {
+        pushAI(
+          `「${name}」看起来不太像一个店铺名 😅\n\n` +
+          `您可以试试更具体的，比如「老王家烧烤」、「喵喵宠物店」、「ABC 咖啡」～`
+        );
+        return;
+      }
+      acceptName();
+    } catch {
+      // 服务异常 → 静默降级，接受原文
+      setTyping(false);
+      acceptName();
+    }
   };
 
   const handleFnConfirm = () => {
@@ -750,7 +771,7 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
   };
 
   // ── universal text input handler ───────────────────────────────────────────
-  const handleChatInput = (e: React.FormEvent) => {
+  const handleChatInput = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = chatInput.trim();
     if (!text && !pendingImage && !pendingAudio && !pendingFile) return;
@@ -808,33 +829,105 @@ function OnboardingChat({ onClose }: { onClose: () => void }) {
     }
 
     if (step === 'industry') {
-      // Try to match an industry option
+      // ① 本地关键词命中即走，省一次 LLM 调用
       const match = INDUSTRY_OPTIONS.find(o =>
         o.label.includes(t) || o.value.includes(t) ||
         tl.includes(o.value.toLowerCase()) || tl.includes(o.label.toLowerCase())
       );
       if (match) { handleIndustry(match.value, match.label); return; }
-      // Accept free text as the industry name
+
+      // ② 没命中 → 调 LLM 兜底分类
       if (!waitingUser) return;
       setWaitingUser(false);
       setMsgs(prev => [...prev, { from: 'user', text: t }]);
-      setBizState(s => ({ ...s, industry: t }));
-      setStep('name');
-      pushAI(`好的，${t} 行业！您的店铺名称是什么？`);
+      setTyping(true);
+
+      try {
+        const { industry, confidence } = await storeApi.classifyIndustry(t);
+        setTyping(false);
+
+        // 跑题或低置信 → 礼貌复读，仍停在 industry 步骤
+        if (industry === 'unknown' || confidence < 0.5) {
+          pushAI(
+            "抱歉，我没太理解您的意思 😅\n\n" +
+            "您可以直接点下面的行业按钮，或简短描述一下您做什么生意，比如「我开烧烤店」、「我卖衣服」、「我做民宿」～"
+          );
+          return;
+        }
+
+        // 命中枚举 → 走标准 handleIndustry
+        const matched = INDUSTRY_OPTIONS.find(o => o.value === industry);
+        if (matched) {
+          // handleIndustry 会再 push 一条 user msg；这里我们已 push 过，回退一下
+          setMsgs(prev => prev.slice(0, -1));
+          setWaitingUser(true);
+          handleIndustry(matched.value, matched.label);
+        } else {
+          // 后端返回的 industry 不在枚举里（防御性）
+          setBizState(s => ({ ...s, industry }));
+          setStep('name');
+          pushAI(`好的，${industry} 行业！您的店铺名称是什么？`);
+        }
+      } catch {
+        // 网络/服务器异常 → 静默降级为原"接受原文"行为，不报错给用户
+        setTyping(false);
+        setBizState(s => ({ ...s, industry: t }));
+        setStep('name');
+        pushAI(`好的，${t} 行业！您的店铺名称是什么？`);
+      }
 
     } else if (step === 'functions') {
-      // treat typed text as a request, confirm and move on
       if (!waitingUser) return;
       setWaitingUser(false);
       setMsgs(prev => [...prev, { from: 'user', text: t }]);
-      setBizState(s => ({ ...s, functions: [t] }));
-      setStep('hasAccount');
-      pushAI(`明白！功能需求已记录：${t}\n\n您已经有 ClawMart 账号了吗？`);
+      setTyping(true);
+
+      try {
+        const r = await storeApi.validateOnboarding('functions', t);
+        setTyping(false);
+        if (!r.valid) {
+          pushAI(
+            "我没太理解您想要的功能 😅\n\n" +
+            "您可以直接勾选下面的功能选项，或简短描述，比如「我要 AI 客服和数据分析」、「全部都要」～"
+          );
+          return;
+        }
+        const matched = r.data?.matched?.length ? r.data.matched : ['全部功能'];
+        setBizState(s => ({ ...s, functions: matched }));
+        setStep('hasAccount');
+        pushAI(`明白！功能需求已记录：${matched.join('、')}\n\n您已经有 ClawMart 账号了吗？`);
+      } catch {
+        setTyping(false);
+        setBizState(s => ({ ...s, functions: [t] }));
+        setStep('hasAccount');
+        pushAI(`明白！功能需求已记录：${t}\n\n您已经有 ClawMart 账号了吗？`);
+      }
 
     } else if (step === 'hasAccount') {
       if (!waitingUser) return;
-      const hasAcc = /有|登录|已有|有账号/.test(tl);
-      handleHasAccount(hasAcc ? 'has' : 'no', t);
+      setWaitingUser(false);
+      setMsgs(prev => [...prev, { from: 'user', text: t }]);
+      setTyping(true);
+
+      try {
+        const r = await storeApi.validateOnboarding('hasAccount', t);
+        setTyping(false);
+        if (!r.valid) {
+          pushAI("没听清楚 😅 您已经有 ClawMart 账号了吗？\n\n点击下面的「有」或「没有」，或直接告诉我。");
+          return;
+        }
+        // handleHasAccount 自身会 push 一条 user msg；这里已 push 过，回退一条
+        setMsgs(prev => prev.slice(0, -1));
+        setWaitingUser(true);
+        handleHasAccount(r.data?.has_account ? 'has' : 'no', t);
+      } catch {
+        setTyping(false);
+        // 静默降级：旧正则
+        const hasAcc = /有|登录|已有|有账号/.test(tl);
+        setMsgs(prev => prev.slice(0, -1));
+        setWaitingUser(true);
+        handleHasAccount(hasAcc ? 'has' : 'no', t);
+      }
 
     } else if (step === 'manage' || step === 'viewListings') {
       setMsgs(prev => [...prev, { from: 'user', text: t }]);
