@@ -215,7 +215,7 @@ export function ClawNav() {
             gap: 8,
           }}>
             <img src="/logo.png" alt="OpenClaw" style={{ width: 36, height: 36, objectFit: 'contain' }} />
-            CLAWMART 龙虾中国
+            CLAWMART
           </Link>
 
           {/* Desktop nav */}
